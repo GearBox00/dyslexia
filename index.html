@@ -1,0 +1,2227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>すらすら ひらがな — Phase 0 試作</title>
+<style>
+  :root{
+    --bg:#FBF7EE;          /* 純白を避ける(まぶしさ対策) */
+    --fg:#2E2A26;
+    --sub:#7A736B;
+    --line:#E4DCCC;
+    --accent:#3B82C4;
+    --good:#2E9E6B;
+    --soft:#D9A441;
+    --card:#FFFDF8;
+    --meter:#EDE6D8;
+    --dot:#E4DCCC;
+    --dotn:#C9C0B2;
+    --warnbg:#FDF3E0;
+    --warnline:#EBD9B4;
+    --field:#FFFFFF;
+  }
+  /* まぶしさを避ける方針は暗い側でも同じ。単純な反転ではなく暖色の低コントラスト */
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#211E1A; --fg:#EFE8DA; --sub:#A79C8C; --line:#3A342C;
+      --accent:#6FA8DC; --good:#5FC391; --soft:#E0B65C;
+      --card:#292521; --meter:#332E27; --dot:#3A342C; --dotn:#544C41;
+      --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#211E1A; --fg:#EFE8DA; --sub:#A79C8C; --line:#3A342C;
+    --accent:#6FA8DC; --good:#5FC391; --soft:#E0B65C;
+    --card:#292521; --meter:#332E27; --dot:#3A342C; --dotn:#544C41;
+    --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815;
+  }
+  :root[data-theme="light"]{
+    --bg:#FBF7EE; --fg:#2E2A26; --sub:#7A736B; --line:#E4DCCC;
+    --accent:#3B82C4; --good:#2E9E6B; --soft:#D9A441;
+    --card:#FFFDF8; --meter:#EDE6D8; --dot:#E4DCCC; --dotn:#C9C0B2;
+    --warnbg:#FDF3E0; --warnline:#EBD9B4; --field:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family:"UD デジタル教科書体 NK-R","UD Digital Kyokashotai NK-R",
+                "UD デジタル教科書体 N-R","BIZ UDPGothic","BIZ UDGothic",
+                "Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN",
+                "Yu Gothic UI","Meiryo",sans-serif;
+    letter-spacing:.08em;      /* 字間広め: エビデンスあり */
+    line-height:1.9;
+    -webkit-text-size-adjust:100%;
+    overflow-x:hidden;
+  }
+  .wrap{
+    max-width:760px;margin:0 auto;padding:20px 18px 40px;
+    min-height:100%;display:flex;flex-direction:column;
+  }
+  .screen{display:none;flex:1;flex-direction:column;}
+  .screen.on{display:flex;}
+
+  h1{font-size:1.35rem;margin:.2em 0 .1em;letter-spacing:.06em;}
+  .lead{color:var(--sub);font-size:.95rem;margin:0 0 1.2em;}
+
+  button{
+    font-family:inherit;letter-spacing:.06em;
+    border:none;border-radius:16px;cursor:pointer;
+    background:var(--accent);color:#fff;
+    font-size:1.15rem;padding:18px 26px;
+    min-height:64px;                     /* 押しやすさ */
+    box-shadow:0 3px 0 rgba(0,0,0,.12);
+  }
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.12);}
+  button.ghost{background:transparent;color:var(--sub);box-shadow:none;
+    border:2px solid var(--line);font-size:.95rem;padding:12px 18px;min-height:0;}
+  button[disabled]{opacity:.45;cursor:default;}
+  .btnrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+
+  .card{
+    background:var(--card);border:2px solid var(--line);border-radius:18px;
+    padding:16px 18px;margin:14px 0;
+  }
+  .card h2{font-size:1.02rem;margin:.1em 0 .5em;letter-spacing:.05em;}
+  label.row{display:flex;align-items:center;gap:12px;margin:14px 0;font-size:.95rem;}
+  label.row span.name{flex:0 0 9.5em;color:var(--sub);}
+  input[type=range]{flex:1;min-width:120px;accent-color:var(--accent);height:28px;}
+  .val{flex:0 0 5.2em;text-align:right;font-variant-numeric:tabular-nums;color:var(--sub);}
+
+  /* ---- 練習画面 ---- */
+  #play{justify-content:center;align-items:center;text-align:center;}
+  .glyph{
+    font-size:clamp(9rem,44vw,17rem);
+    line-height:1.05;letter-spacing:0;
+    margin:.02em 0;min-height:1.1em;
+    user-select:none;
+  }
+  .glyph.word{font-size:clamp(3rem,16vw,6rem);letter-spacing:.06em;}
+  .fb{font-size:1.5rem;min-height:1.8em;color:var(--good);letter-spacing:.1em;}
+  .fb.soft{color:var(--soft);}
+  .fb.none{color:var(--sub);}
+  .meter{
+    width:min(320px,80vw);height:14px;border-radius:10px;
+    background:var(--meter);overflow:hidden;margin:10px 0 4px;
+  }
+  .meter i{display:block;height:100%;width:0;background:var(--accent);
+    transition:width .06s linear;}
+  .meter.hot i{background:var(--good);}
+  .dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;
+    margin:14px 0 0;max-width:90%;}
+  .dots i{width:10px;height:10px;border-radius:50%;background:var(--dot);}
+  .dots i.g{background:var(--good);}
+  .dots i.s{background:var(--soft);}
+  .dots i.n{background:var(--dotn);}
+  .topbar{position:fixed;top:10px;right:14px;z-index:5;}
+
+  /* ---- 結果画面 ---- */
+  table{border-collapse:collapse;width:100%;font-size:.86rem;letter-spacing:.02em;}
+  th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;
+    font-variant-numeric:tabular-nums;}
+  th{color:var(--sub);font-weight:400;white-space:nowrap;}
+  .scroll{max-height:320px;overflow:auto;-webkit-overflow-scrolling:touch;}
+  .big{font-size:1.7rem;letter-spacing:.04em;}
+  .note{font-size:.86rem;color:var(--sub);line-height:1.8;}
+  .warn{background:var(--warnbg);border-color:var(--warnline);}
+  textarea{width:100%;height:120px;font-size:.75rem;font-family:ui-monospace,monospace;
+    border:2px solid var(--line);border-radius:12px;padding:8px;background:var(--field);color:var(--fg);
+    letter-spacing:0;line-height:1.5;}
+
+  /* ---- モードえらび ---- */
+  .modes{display:flex;flex-direction:column;gap:16px;margin-top:20px;}
+  button.mode{display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+    font-size:2rem;padding:26px 28px;min-height:0;letter-spacing:.14em;}
+  button.mode small{font-size:.82rem;opacity:.86;letter-spacing:.06em;}
+  /* 「たたかう」が主役。ひとつずつの練習は控えめに */
+  button.mode.sub{font-size:1.4rem;padding:18px 24px;
+    background:transparent;color:var(--fg);border:2px solid var(--line);box-shadow:none;}
+  button.mode.sub small{color:var(--sub);opacity:1;}
+
+  /* ---- 文字えらび ---- */
+  .tabs{display:flex;gap:10px;margin:6px 0 4px;}
+  .tabs button{flex:1;font-size:1.05rem;padding:14px 8px;min-height:0;
+    background:transparent;color:var(--sub);border:2px solid var(--line);box-shadow:none;}
+  .tabs button.sel{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px;}
+  .grid button{font-size:1.7rem;padding:0;min-height:58px;letter-spacing:0;
+    background:var(--card);color:var(--fg);border:2px solid var(--line);box-shadow:none;
+    position:relative;}
+  /* 五十音表。あ行を右端にして、縦に読む(学校で使う並び) */
+  .grid.gojuon{grid-template-columns:repeat(10,minmax(0,1fr));direction:rtl;gap:5px;}
+  .grid.gojuon button{font-size:clamp(.95rem,3.8vw,1.6rem);
+    min-height:clamp(32px,8.4vw,56px);direction:ltr;}
+  .grid.gojuon .blank{min-height:clamp(32px,8.4vw,56px);}
+  .subhead{font-size:.82rem;color:var(--sub);margin:16px 0 6px;letter-spacing:.06em;}
+  .grid button.done{border-color:var(--good);}
+  .grid button.done::after{content:'';position:absolute;right:5px;top:5px;
+    width:8px;height:8px;border-radius:50%;background:var(--good);}
+
+  /* ---- かく練習 ---- */
+  #write{align-items:center;text-align:center;}
+  .steps{display:flex;gap:8px;margin:4px 0 10px;font-size:.84rem;color:var(--sub);}
+  .steps span{padding:5px 12px;border-radius:999px;border:2px solid var(--line);}
+  .steps span.now{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .steps span.done{border-color:var(--good);color:var(--good);}
+  /* パッドを入れる枠。幅を決めておかないと中のパッドがつぶれる */
+  #write-slot,#battle-slot{width:min(340px,86vw);}
+  .pad{
+    width:min(340px,86vw);aspect-ratio:1/1;background:var(--card);
+    border:2px solid var(--line);border-radius:18px;touch-action:none;
+    position:relative;overflow:hidden;
+  }
+  .pad svg{display:block;width:100%;height:100%;}
+  .pad .rule{stroke:var(--line);stroke-width:1;stroke-dasharray:4 5;}
+  .pad .guide{fill:none;stroke:var(--line);stroke-width:7;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .pad .cue{fill:none;stroke:var(--soft);stroke-width:7;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .pad .ink{fill:none;stroke:var(--fg);stroke-width:7;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .pad .show{fill:none;stroke:var(--accent);stroke-width:7;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .pad .live{fill:none;stroke:var(--accent);stroke-width:7;opacity:.75;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .pad .num{fill:var(--soft);font-size:11px;letter-spacing:0;}
+  .wfb{font-size:1.3rem;min-height:1.9em;letter-spacing:.1em;color:var(--good);}
+  .wfb.soft{color:var(--soft);}
+  .wfb.none{color:var(--sub);}
+
+  /* ---- たたかう ---- */
+  .foelist{display:flex;flex-direction:column;gap:12px;}
+  .foecard{display:flex;align-items:center;gap:14px;text-align:left;
+    background:var(--card);color:var(--fg);border:2px solid var(--line);
+    box-shadow:none;padding:12px 16px;min-height:0;font-size:1.05rem;}
+  .foecard svg{width:56px;height:56px;flex:0 0 56px;}
+  .foecard .fname{display:block;}
+  .foecard .fsub{display:block;font-size:.78rem;color:var(--sub);letter-spacing:.04em;}
+  .foecard.locked{opacity:.5;}
+  .foecard.beaten{border-color:var(--good);}
+
+  #battle{align-items:center;text-align:center;}
+  .foe{width:min(190px,46vw);margin:2px auto 0;}
+  .foe svg{width:100%;height:auto;display:block;}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @keyframes hit{0%,100%{transform:translateX(0)}25%{transform:translateX(-9px)}
+    75%{transform:translateX(9px)}}
+  .foe.idle svg{animation:bob 2.4s ease-in-out infinite;}
+  .foe.hit svg{animation:hit .32s ease-in-out;}
+  @media (prefers-reduced-motion:reduce){
+    .foe.idle svg,.foe.hit svg{animation:none;}
+  }
+  .bar{width:min(320px,84vw);height:16px;border-radius:10px;background:var(--meter);
+    overflow:hidden;margin:8px auto 2px;}
+  .bar i{display:block;height:100%;background:var(--good);transition:width .35s ease;}
+  .bar.exp{height:10px;}
+  .bar.exp i{background:var(--accent);}
+  .barlabel{font-size:.8rem;color:var(--sub);font-variant-numeric:tabular-nums;}
+  .bglyph{font-size:clamp(6rem,30vw,11rem);line-height:1.05;letter-spacing:0;
+    min-height:1.1em;user-select:none;}
+  .bglyph.word{font-size:clamp(2.2rem,11vw,4rem);letter-spacing:.06em;}
+  .btask{font-size:.95rem;color:var(--sub);letter-spacing:.1em;min-height:1.6em;}
+  /* ひらがな／カタカナ どちらで書くのかを、色でも見分けられるようにする */
+  .kindchip{display:inline-block;padding:3px 12px;border-radius:999px;
+    font-size:.9rem;letter-spacing:.08em;color:#fff;margin-inline-end:6px;}
+  .kindchip.hira{background:var(--accent);}
+  .kindchip.kata{background:#8A6BB5;}
+  #b-msg{font-size:1.3rem;min-height:1.9em;letter-spacing:.1em;color:var(--good);}
+  #b-msg.soft{color:var(--soft);}
+  #b-msg.none{color:var(--sub);}
+  #b-msg.crit{color:var(--soft);font-size:1.55rem;}
+  .readzone{width:min(340px,86vw);margin:0 auto;}
+
+  /* ---- みわけ(似た形の字) ---- */
+  .choices{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:12px 0;}
+  .choice{width:min(126px,27vw);aspect-ratio:1/1;padding:0;min-height:0;
+    background:var(--card);border:3px solid var(--line);border-radius:18px;box-shadow:none;}
+  .choice svg{width:100%;height:100%;display:block;}
+  .choice svg path{fill:none;stroke:var(--fg);stroke-width:7;
+    stroke-linecap:round;stroke-linejoin:round;}
+  .choice.right{border-color:var(--good);}
+  .choice.wrong{border-color:var(--soft);opacity:.55;}
+
+  /* ---- おとの かず(特殊音節) ---- */
+  .beats{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;min-height:62px;}
+  .beat{width:clamp(40px,12vw,60px);height:clamp(40px,12vw,60px);border-radius:14px;
+    border:3px dashed var(--line);display:flex;align-items:center;justify-content:center;
+    font-size:clamp(1rem,4.4vw,1.5rem);letter-spacing:0;color:var(--sub);}
+  .beat.on{background:var(--accent);border-style:solid;border-color:var(--accent);color:#fff;}
+  .beat.sp{border-style:solid;border-color:var(--soft);color:var(--soft);}
+  .beat.on.sp{background:var(--soft);color:#fff;}
+  .tapzone{width:min(340px,86vw);aspect-ratio:2.2/1;margin:0 auto;border-radius:22px;
+    background:var(--card);border:3px dashed var(--line);display:flex;
+    align-items:center;justify-content:center;font-size:1.15rem;color:var(--sub);
+    touch-action:none;user-select:none;cursor:pointer;}
+  .tapzone.hit{border-style:solid;border-color:var(--accent);color:var(--accent);}
+  .wordline{font-size:clamp(1.6rem,7vw,2.4rem);min-height:1.4em;letter-spacing:.12em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============ ホーム ============ -->
+<section id="home" class="screen on">
+  <h1>すらすら ひらがな</h1>
+  <p class="lead">Phase 0 試作</p>
+  <div class="modes">
+    <button id="btn-mode-battle" class="mode">たたかう<small>よんで かいて えらんで てきを たおす</small></button>
+    <p class="subhead" style="text-align:center">ひとつずつ れんしゅうする</p>
+    <button id="btn-mode-read" class="mode sub">よむ<small>お手本より さきに 読む</small></button>
+    <button id="btn-mode-write" class="mode sub">かく<small>書き順を 見て なぞって 書く</small></button>
+    <button id="btn-mode-mikake" class="mode sub">みわけ<small>にている字を 見分ける</small></button>
+    <button id="btn-mode-haku" class="mode sub">おとの かず<small>「がっこう」は いくつ？</small></button>
+  </div>
+</section>
+
+<!-- ============ よむ(設定) ============ -->
+<section id="readhome" class="screen">
+  <h1>よむ</h1>
+  <p class="lead">Phase 0 試作 ／ 発声タイミング検出(VAD)の検証用</p>
+
+  <div class="tabs">
+    <button id="tab-moji" class="sel">もじ</button>
+    <button id="tab-kotoba">ことば</button>
+  </div>
+
+  <div class="card">
+    <h2>この試作でたしかめること</h2>
+    <p class="note">
+      お手本の音が鳴る<b>前に</b>声を出せたかどうかを、マイクの音量だけで判定します。<br>
+      「何と言ったか」は判定しません(音声認識は使いません)。<br>
+      雑音のある部屋・小さい声でも、発声のタイミングを安定して拾えるかを見ます。
+    </p>
+  </div>
+
+  <div class="card warn">
+    <h2>じゅんび</h2>
+    <p class="note">
+      ・マイクの使用を許可してください(音声は<b>外部に送信されません</b>。すべて端末内で処理します)<br>
+      ・スピーカーの音がマイクに回り込むため、<b>イヤホン推奨</b>です(なくても動きます)<br>
+      ・はじめに1.5秒、部屋の静けさを測ります
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>設定</h2>
+    <label class="row"><span class="name">お手本までの待ち</span>
+      <input type="range" id="s-wait" min="800" max="4000" step="100" value="2000">
+      <span class="val" id="v-wait">2.0秒</span></label>
+    <label class="row"><span class="name">マイクの感度</span>
+      <input type="range" id="s-sens" min="4" max="24" step="1" value="11">
+      <span class="val" id="v-sens">11</span></label>
+    <label class="row"><span class="name">1回の問題数</span>
+      <input type="range" id="s-n" min="10" max="60" step="5" value="30">
+      <span class="val" id="v-n">30問</span></label>
+    <p class="note">感度は小さいほど敏感です。誤検出が多いなら大きく、声を拾わないなら小さくしてください。</p>
+  </div>
+
+  <div class="btnrow" style="margin-top:8px">
+    <button id="btn-start">はじめる</button>
+    <button class="ghost" id="btn-nomic">マイクなしで試す(スペースキー)</button>
+  </div>
+  <div class="btnrow" style="margin-top:14px">
+    <button class="ghost" id="btn-reset">おぼえた記録をけす</button>
+    <button class="ghost" id="btn-read-back">もどる</button>
+  </div>
+</section>
+
+<!-- ============ かく(文字えらび) ============ -->
+<section id="pickchar" class="screen">
+  <h1>かく</h1>
+  <p class="lead">れんしゅうする字を えらんでください</p>
+
+  <div class="tabs">
+    <button id="tab-hira" class="sel">ひらがな</button>
+    <button id="tab-kata">カタカナ</button>
+  </div>
+
+  <div class="card">
+    <div class="grid gojuon" id="chargrid"></div>
+    <div id="extrawrap" style="display:none">
+      <p class="subhead">だくおん・小さい字</p>
+      <div class="grid" id="extragrid"></div>
+    </div>
+  </div>
+
+  <label class="row" style="margin:0 4px 10px">
+    <input type="checkbox" id="chk-extra" style="width:24px;height:24px;accent-color:var(--accent)">
+    <span>だくおん・小さい字も ふくめる</span>
+  </label>
+
+  <div class="btnrow">
+    <button class="ghost" id="btn-pick-back">もどる</button>
+    <button class="ghost" id="btn-write-reset">かけた しるしを けす</button>
+  </div>
+</section>
+
+<!-- ============ かく(練習) ============ -->
+<section id="write" class="screen">
+  <div class="topbar"><button class="ghost" id="btn-write-back">もどる</button></div>
+
+  <p class="btask" id="w-kind"></p>
+
+  <div class="steps" id="wsteps">
+    <span id="st-see">みる</span><span id="st-trace">なぞる</span><span id="st-solo">じぶんで</span>
+  </div>
+
+  <div id="write-slot"></div>
+
+  <div class="pad" id="pad">
+    <svg id="padsvg" viewBox="0 0 109 109" aria-label="れんしゅうの ます">
+      <line class="rule" x1="54.5" y1="4" x2="54.5" y2="105"></line>
+      <line class="rule" x1="4" y1="54.5" x2="105" y2="54.5"></line>
+      <g id="g-guide"></g>
+      <g id="g-cue"></g>
+      <g id="g-ink"></g>
+      <g id="g-live"></g>
+      <g id="g-num"></g>
+    </svg>
+  </div>
+
+  <div class="wfb none" id="wfb"></div>
+
+  <div class="btnrow" style="justify-content:center">
+    <button class="ghost" id="btn-see-again">もういちど 見る</button>
+    <button class="ghost" id="btn-write-next">つぎの字</button>
+  </div>
+</section>
+
+<!-- ============ みわけ ============ -->
+<section id="mikake" class="screen">
+  <div class="topbar"><button class="ghost" id="btn-mw-back">もどる</button></div>
+  <h1>みわけ</h1>
+  <p class="btask" id="mw-task"></p>
+  <div id="mw-slot"></div>
+  <div class="choices" id="mw-choices"></div>
+  <div class="wfb none" id="mw-msg"></div>
+  <div class="btnrow" style="justify-content:center">
+    <button class="ghost" id="btn-mw-again">もういちど きく</button>
+    <button class="ghost" id="btn-mw-next">つぎ</button>
+  </div>
+</section>
+
+<!-- ============ おとの かず(特殊音節) ============ -->
+<section id="haku" class="screen">
+  <div class="topbar"><button class="ghost" id="btn-hk-back">もどる</button></div>
+  <h1>おとの かず</h1>
+  <p class="btask" id="hk-task">きこえた ことばの かずだけ たたいてね</p>
+  <div class="wordline" id="hk-word"></div>
+  <div class="beats" id="hk-beats"></div>
+  <div class="tapzone" id="hk-tap">ここを たたく</div>
+  <div class="wfb none" id="hk-msg"></div>
+  <div class="btnrow" style="justify-content:center">
+    <button class="ghost" id="btn-hk-again">もういちど きく</button>
+    <button class="ghost" id="btn-hk-next">つぎ</button>
+  </div>
+</section>
+
+<!-- ============ たたかう(てきえらび) ============ -->
+<section id="battlepick" class="screen">
+  <h1>たたかう</h1>
+  <p class="lead" id="lvline"></p>
+
+  <div class="bar exp"><i id="expbar"></i></div>
+  <p class="barlabel" id="explabel"></p>
+
+  <div class="foelist" id="foelist"></div>
+
+  <div class="btnrow" style="margin-top:16px">
+    <button class="ghost" id="btn-battle-back">もどる</button>
+    <button class="ghost" id="btn-rpg-reset">さいしょから やりなおす</button>
+  </div>
+</section>
+
+<!-- ============ たたかう(戦闘) ============ -->
+<section id="battle" class="screen">
+  <div class="topbar"><button class="ghost" id="btn-battle-quit">にげる</button></div>
+
+  <div class="foe idle" id="foe"></div>
+  <p class="barlabel" id="foename"></p>
+  <div class="bar"><i id="foehp"></i></div>
+
+  <p class="btask" id="b-task"></p>
+
+  <div class="readzone" id="b-read">
+    <div class="bglyph" id="b-glyph"></div>
+  </div>
+  <div id="battle-slot"></div>
+
+  <div id="b-msg" class="none"></div>
+
+  <div class="btnrow" style="justify-content:center" id="b-help">
+    <button class="ghost" id="btn-b-again">もういちど きく</button>
+    <button class="ghost" id="btn-b-hint">おてほんを みる</button>
+  </div>
+
+  <div class="btnrow" style="justify-content:center" id="b-buttons"></div>
+</section>
+
+<!-- ============ 練習 ============ -->
+<section id="play" class="screen">
+  <div class="topbar"><button class="ghost" id="btn-quit">やめる</button></div>
+  <div class="glyph" id="glyph"></div>
+  <div class="fb" id="fb"></div>
+  <div class="meter" id="meter"><i></i></div>
+  <div class="note" id="micnote" style="font-size:.78rem"></div>
+  <div class="dots" id="dots"></div>
+</section>
+
+<!-- ============ 結果 ============ -->
+<section id="result" class="screen">
+  <h1>おつかれさま</h1>
+  <div class="card">
+    <div class="big" id="r-head"></div>
+    <p class="note" id="r-sub"></p>
+  </div>
+
+  <div class="card">
+    <h2>検証ログ(おとな向け)</h2>
+    <div class="scroll">
+      <table id="r-table">
+        <thead><tr><th>#</th><th>字</th><th>判定</th><th>反応(ms)</th><th>区間</th><th>ピーク</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>CSV(コピーして保存できます)</h2>
+    <textarea id="r-csv" readonly></textarea>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="ghost" id="btn-copy">コピー</button>
+    </div>
+  </div>
+
+  <div class="btnrow">
+    <button id="btn-again">もういちど</button>
+    <button class="ghost" id="btn-home">ホームへ</button>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ============================================================
+   ひらがな・カタカナの書き順データ（自動生成 — 直接編集しない）
+   作り直すとき: node tools/build-kana-strokes.js
+   ------------------------------------------------------------
+   出典: KanjiVG — Copyright (C) Ulrich Apel
+   ライセンス: Creative Commons Attribution-Share Alike 3.0
+   https://kanjivg.tagaini.net/
+   ------------------------------------------------------------
+   座標系はすべて 109 x 109。
+   KANA_STROKES['あ'] = ['M...', 'M...', ...]（1画ずつのSVGパス）
+   ============================================================ */
+'use strict';
+
+const KANA_VIEWBOX = 109;
+
+const KANA_STROKES = {
+  "ぁ": ["M35.72,46.75c0.7,0.7,2.21,1.47,4.22,1.4c8.56-0.28,16.06-1.7,23.69-3.41c1.21-0.27,3.72-0.7,5.32-0.4","M51.03,34.43c0.7,0.8,1.21,2.87,0.85,4.46c-3.01,13.43-5.02,30.31-4.12,42.73c0.33,4.57,1.51,8.72,2.71,10.92","M63.53,55.67c0.6,0.9,0.93,3.52,0.4,4.91c-3.71,9.82-9.04,19.04-20.38,28.66c-5.51,4.67-12.75,3-13.05-6.71c-0.27-8.72,10.74-18.54,26-21.44c9.97-1.9,21.75,1.67,24.5,10.22c3.39,10.53-3.01,21.14-16.77,24.45"],
+  "あ": ["M31.01,33c0.88,0.88,2.75,1.82,5.25,1.75c8.62-0.25,20-2.12,29.5-4.25c1.51-0.34,4.62-0.88,6.62-0.5","M49.76,17.62c0.88,1,1.82,3.26,1.38,5.25c-3.75,16.75-6.25,38.13-5.13,53.63c0.41,5.7,1.88,10.88,3.38,13.62","M65.63,44.12c0.75,1.12,1.16,4.39,0.5,6.12c-4.62,12.26-11.24,23.76-25.37,35.76c-6.86,5.83-15.88,3.75-16.25-8.38c-0.34-10.87,13.38-23.12,32.38-26.74c12.42-2.37,27,1.38,30.5,12.75c4.05,13.18-3.76,26.37-20.88,30.49"],
+  "ぃ": ["M29,48.88c1.66,1.8,2.27,3.91,1.79,6.16c-3.41,15.71-0.09,26.55,7.29,34.39c5.04,5.35,3.91,2.61,4.55-4.32","M69.38,53.62c7.95,6.66,14.98,15.57,15.5,28"],
+  "い": ["M21.5,29.66c2.01,2.17,2.61,4.68,2.17,7.43c-3.09,19.16-1.03,32.01,7.93,41.45c6.12,6.45,6.26,3.14,7.04-5.21","M72.96,36.51c9.44,8.05,17.79,18.82,18.41,33.83"],
+  "ぅ": ["M43.83,30.97c4.74,1.79,8.1,2.53,10.84,2.53c6.97,0,6.74,0.95-0.32,4.63","M37.5,52.85c1.67,0.95,3.3,2.57,6.67,1.16c4.2-1.75,10.01-5.75,14.52-5.64c4.51,0.1,8.3,3.96,8.3,14.91c0,13.05-7.98,24.22-20.63,33.48"],
+  "う": ["M42,15.5c5.62,2.12,9.62,3,12.88,3c8.27,0,8,1.12-0.38,5.5","M33,42.38c2.12,1.12,4.12,2.88,8.5,1.38c4.38-1.5,12.75-7.12,18.5-7c5.75,0.12,10.25,5,10.25,18c0,15.49-8.25,30.24-24.37,41.24"],
+  "ぇ": ["M44.63,30.47c4.74,1.79,6.92,2.41,10.84,2.53c11.71,0.35,3.21,1.51-0.32,4.13","M37.78,56.18c1.47,0.98,3.52,1.37,5.77,0.49c2.57-1.01,13.29-6.16,16.61-7.72c3.32-1.56,6.5,0.03,3.42,3.62c-9.58,11.13-21.31,24.62-30.89,34.68c-2.55,2.68-0.45,2.77,1.17,1.08c10.55-11.04,14.17-15.73,18.47-15.73c5.57,0,2.74,13.09,5.28,17.49c2.54,4.4,14.95,2.93,20.42,1.66"],
+  "え": ["M40.52,13.25c5.62,2.12,10,3,14.12,3c8.27,0,8,1.12-0.38,5.5","M32.52,45.12c1.88,1.25,4.5,1.75,7.38,0.62c3.29-1.29,17-7.88,21.25-9.88c4.25-2,8.32,0.04,4.38,4.62c-12.26,14.27-27.26,31.52-39.51,44.4c-3.26,3.42-0.58,3.54,1.5,1.37c13.5-14.12,18.12-20.12,23.62-20.12c7.13,0,3.5,16.75,6.75,22.38c3.25,5.63,19.12,3.75,26.12,2.12"],
+  "ぉ": ["M31.09,49.46c1.09,0.81,2.88,1.92,4.77,1.71c1.89-0.2,15.59-4.14,16.78-4.64c1.19-0.5,3.18-1.01,4.67-1.61","M46.14,34.12c1.42,1.38,2.35,3.54,1.98,5.95c-1.99,13.01-2.43,36.74-1.54,47.11c0.6,6.96-0.51,8.43-5.66,5.75c-4.07-2.12-10.92-6.46-10.92-9.99c0-6.05,19.36-19.07,35.55-19.07c13.7,0,19.86,6.66,19.86,13.92c0,6.66-7.45,15.23-21.25,16.95","M70.92,38.97c4.27,2.12,6.97,4.8,8.44,6.66c3.57,4.5,0.3,3.63-0.89,4.04"],
+  "お": ["M22.88,35.12c1.38,1,3.62,2.38,6,2.12c2.38-0.26,19.62-5.12,21.12-5.74c1.5-0.62,4-1.25,5.88-2","M41.5,16.12c2.25,1,3.59,4.39,3.12,7.38c-2.5,16.12-3.37,45.53-2.25,58.38c0.75,8.62-0.64,10.45-7.12,7.12c-5.13-2.62-13.75-8-13.75-12.38c0-7.5,24.38-23.62,44.75-23.62c17.25,0,25,8.25,25,17.25c0,8.25-9.38,18.88-26.75,21","M73,22.12c5.38,2.62,8.88,5.88,10.62,8.25c2.27,3.08,0.38,4.5-1.12,5"],
+  "か": ["M24.62,38.62c1.88,1.62,4.65,2.33,8.62,1c25.5-8.5,29.5-4.13,29.5,7.62c0,9.38-1.24,17.46-4.25,25.25c-7.62,19.76-10.87,17.39-16.12,10.89","M48.5,17.5c1,1.38,1.29,4.7,0.5,7.12c-5,15.25-18.02,40.93-19.62,43.88c-3.12,5.75-6.38,11.88-9.38,16.25","M77.37,31.62c7.5,6.88,13.25,15.75,15,24.88"],
+  "が": ["M24.62,38.62c1.88,1.62,4.65,2.33,8.62,1c25.5-8.5,29.5-4.13,29.5,7.62c0,9.38-1.24,17.46-4.25,25.25c-7.62,19.76-10.87,17.39-16.12,10.89","M48.5,17.5c1,1.38,1.29,4.7,0.5,7.12c-5,15.25-18.02,40.93-19.62,43.88c-3.12,5.75-6.38,11.88-9.38,16.25","M77.37,31.62c7.5,6.88,13.25,15.75,15,24.88","M80.5,18.25c2.75,1.75,6,5.38,7.75,8.5","M86.87,13.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "き": ["M30.5,30.25c1.88,0.75,4.64,1.06,5.88,0.88c6.75-1,22.25-4.5,26.5-6c2.17-0.76,3.5-1.25,4.88-2.12","M36.25,48.7c2.01,0.85,4.97,1.2,6.29,0.99c7.23-1.13,23.82-5.09,28.37-6.79c2.32-0.86,3.75-1.41,5.22-2.4","M42,14.12c1.5,0.88,3.13,2.94,4,5.12c5.5,13.76,16,29.26,26.37,40.76c7.64,8.47,9.12,9.38-6,3.88","M33.75,83.25c10.62,9.75,27.25,8.62,38.12,5"],
+  "ぎ": ["M30.5,30.5c1.88,0.75,4.64,1.06,5.88,0.88c6.75-1,22.25-4.5,26.5-6c2.17-0.76,3.5-1.25,4.88-2.12","M36.25,48.95c2.01,0.85,4.97,1.2,6.29,0.99c7.23-1.13,23.82-5.09,28.37-6.79c2.32-0.86,3.75-1.41,5.22-2.4","M42,14.38c1.5,0.88,3.13,2.94,4,5.12c5.5,13.75,16,29.25,26.38,40.75c7.64,8.47,9.12,9.38-6,3.88","M33.75,83.5c10.62,9.75,27.25,8.62,38.12,5","M77.37,19c2.75,1.75,6,5.38,7.75,8.5","M83.75,14.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "く": ["M60.66,15c0.5,1.62,0.35,5.44-1,7.38c-6.75,9.62-14.3,19.08-18.62,24.5c-4,5-3.79,7.03-0.88,11c5.5,7.5,12.75,18.75,17.62,27.25c1.48,2.59,2.75,4.75,4.5,8.62"],
+  "ぐ": ["M60.66,15c0.5,2.12,0.75,5-1,7.38c-6.97,9.46-14.29,19.09-18.62,24.5c-4,5-3.79,7.03-0.88,11c5.5,7.5,12.75,18.75,17.62,27.25c1.48,2.59,2.75,4.75,4.5,8.62","M73.54,30c2.75,1.75,6,5.38,7.75,8.5","M79.91,25.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "け": ["M24.67,19.75c1.25,1.5,2.62,3.75,2.12,6.38c-3,15.88-6.5,29.5-4.88,44.62c2.02,18.84,2.25,4.75,6.75-3.5","M53.67,38.62c2.12,1.38,4.28,1.89,6.88,1.5c8.25-1.25,15.39-2.57,20.62-4c2.76-0.74,5.26-1.12,6.88-1.12","M71.67,14.38c2.13,1.37,2.88,3.35,2.88,5.12c0,11.62,0.12,20.38,0.12,30.12c0,20.75-0.62,30.88-12.5,42.25"],
+  "げ": ["M24.91,20.25c1.25,1.5,2.37,3.75,1.88,6.38c-3,15.88-6.5,29.5-4.88,44.62c2.02,18.84,2.25,4.75,6.75-3.5","M53.67,39.12c2.12,1.38,4.28,1.89,6.88,1.5c8.25-1.25,15.39-2.57,20.62-4c2.75-0.75,5.25-1.12,6.88-1.12","M71.67,14.62c2.12,1.38,2.87,3.61,2.87,5.38c0,11.62,0.12,20.38,0.12,30.12c0,20.75-0.62,30.88-12.5,42.25","M86.17,13c2.75,1.75,6,5.38,7.75,8.5","M92.54,8.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "こ": ["M34.75,26.75c1.12,0.88,2.91,2.01,6,1.5c7.62-1.25,14.11-2.56,22.38-2.62c15.5-0.12,5.88,5-5.75,9","M30,68.12c2.25,14.5,15.26,17.96,31,16.75c6.5-0.5,11.88-1.25,17.62-2.88"],
+  "ご": ["M34.75,27c1.12,0.88,2.91,2.01,6,1.5c7.62-1.25,14.11-2.56,22.38-2.62c15.5-0.12,5.88,5-5.75,9","M30,68.38c2.25,14.5,15.26,17.96,31,16.75c6.5-0.5,11.88-1.25,17.62-2.88","M80.37,16.25c2.75,1.75,6,5.38,7.75,8.5","M86.75,11.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "さ": ["M27,38.9c2.42,1.33,5.38,1.47,8.32,1.06c8.79-1.24,28.67-7.76,34.15-10.43c2.79-1.36,3.78-1.91,6.28-3.53","M41.5,13.88c1.5,0.88,3.63,2.94,4.5,5.12c5.5,13.75,15.25,27.62,26.87,39.5c7.98,8.15,6.38,10-6,3.12","M35.25,80.5c4.5,11.75,20.88,12.5,38.38,7.5"],
+  "ざ": ["M27,39.15c2.42,1.33,5.38,1.47,8.32,1.06c8.79-1.24,28.67-8.01,34.15-10.68c2.79-1.36,3.78-1.91,6.28-3.53","M41.5,14.12c1.5,0.88,3.63,2.95,4.5,5.13c5.5,13.75,15.25,27.63,26.88,39.5c7.98,8.15,6.38,10-6,3.12","M35.25,80.75c4.5,11.75,20.88,12.5,38.38,7.5","M79.88,14.25c2.75,1.75,6,5.38,7.75,8.5","M86.25,9.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "し": ["M39.12,17.5c1.25,3.12,0.93,6.74,0.38,10.25c-2.12,13.5-3,26.5-3,39.12c0,27.38,19.88,30.12,45.5,17.25"],
+  "じ": ["M39.12,17.25c1.25,3.12,0.93,6.74,0.38,10.25c-2.12,13.5-3,26.5-3,39.12c0,27.38,19.88,30.12,45.5,17.25","M64.24,27c2.75,1.75,6,5.38,7.75,8.5","M70.62,22.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "す": ["M15.5,37.12c2.88,2.12,6.94,1.51,12.75,0.25c16.12-3.5,36.14-5.38,46.62-6.5c7-0.75,11.88-0.62,17.75,0.12","M57.62,13.38c2,1.5,2.75,3.25,2.75,5.88c0,10.38,0,35.12,0,40.75c0,14.62-15.62,16.38-15.62,1.75c0-14.25,18-14.12,18,6.38c0,13.25-7.75,21.5-16,28.38"],
+  "ず": ["M15.5,37.12c2.88,2.12,6.94,1.51,12.75,0.25c16.12-3.5,36.14-5.38,46.62-6.5c7-0.75,11.88-0.62,17.75,0.12","M57.62,13.38c2,1.5,2.75,3.25,2.75,5.88c0,10.38,0,35.12,0,40.75c0,14.62-15.62,16.38-15.62,1.75c0-14.25,18-14.12,18,6.38c0,13.25-7.75,21.5-16,28.38","M77,13c2.75,1.75,6,5.38,7.75,8.5","M83.37,8.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "せ": ["M16.5,49.93c2.88,2.42,6.86,1.57,12.75,0.53c19-3.34,33-5.72,47.12-7.64c6.99-0.95,11.88-1.21,17.75-0.36","M69.74,17.75c2,1.5,2.75,3.25,2.75,5.88c0,10.38,0,17.88,0,23.5c0,25.62-5.75,23.25-11.88,19","M35.62,26.25c2,1.5,2.75,3.25,2.75,5.88c0,10.38,0,28.38,0,34c0,14.5,6.38,19.55,20.14,19.55c10.24,0,13.74,0.07,22.61-1.68"],
+  "ぜ": ["M16.5,49.93c2.88,2.42,6.86,1.57,12.75,0.53c19-3.34,32.5-5.34,47.12-7.64c6.97-1.1,11.88-1.21,17.75-0.36","M69.74,17.75c2,1.5,2.75,3.25,2.75,5.88c0,10.38,0,17.88,0,23.5c0,25.62-5.75,23.25-11.88,19","M35.62,26.25c2,1.5,2.75,3.25,2.75,5.88c0,10.38,0,28.38,0,34c0,14.5,6.38,19.55,20.14,19.55c10.24,0,13.74,0.07,22.61-1.68","M84.5,17.25c2.75,1.75,6,5.38,7.75,8.5","M90.87,12.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "そ": ["M38.4,22c1.88,1.25,4.98,1.05,7.5,0.38c6.5-1.75,13.25-3.75,19.38-5.38c4.63-1.23,7.18,2.06,3.62,5.25c-12.12,10.87-31.14,24.4-40,30.25c-6.25,4.12-5.88,5.75,1.38,3.88c17.08-4.42,35.96-8.68,50.12-10.38c9.38-1.12,9.62,0.12,0.5,1.38c-15.82,2.17-34.38,14.25-34.38,26.5c0,12.88,11.62,20.38,31.5,16.62"],
+  "ぞ": ["M38.4,22c1.88,1.25,4.98,1.05,7.5,0.38c6.5-1.75,13.25-3.75,19.38-5.38c4.63-1.23,7.18,2.06,3.62,5.25c-12.12,10.87-31.14,24.4-40,30.25c-6.25,4.12-5.88,5.75,1.38,3.88c17.08-4.42,35.96-8.68,50.12-10.38c9.38-1.12,9.62,0.12,0.5,1.38c-15.82,2.17-34.38,14.25-34.38,26.5c0,12.88,11.62,20.38,31.5,16.62","M81.78,26.75c2.75,1.75,6,5.38,7.75,8.5","M88.15,21.88c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "た": ["M24.38,35.38c1.38,0.62,3.88,1.51,6.38,1.12c6.5-1,16.25-2.88,24.88-4.75c2.64-0.57,5.38-1.5,7.62-2.38","M45,16.88c0.75,1.25,0.87,3.62,0.38,5.25c-6.35,20.94-12.75,36.37-18.88,52.37c-1.36,3.56-4.75,11.75-6,14.62","M56.38,53.25c12.38-2.75,18.25-3.7,23.62-3.12c15.12,1.62-1.12,2.25-4.25,4.88","M54.13,82.25c4.38,7,14.25,8.12,34.5,5.62"],
+  "だ": ["M24.38,35.38c1.38,0.62,3.88,1.51,6.38,1.12c6.5-1,16.25-2.88,24.88-4.75c2.64-0.57,5.38-1.5,7.62-2.38","M45,16.88c0.75,1.25,0.87,3.62,0.38,5.25c-6.35,20.94-12.75,36.37-18.88,52.37c-1.36,3.56-4.75,11.75-6,14.62","M56.38,53.25c12.38-2.75,18.25-3.7,23.62-3.12c15.12,1.62-1.12,2.25-4.25,4.88","M54.13,82.25c4.38,7,14.25,8.12,34.5,5.62","M76,22.5c2.75,1.75,6,5.38,7.75,8.5","M82.38,17.62c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ち": ["M24.5,32.62c1.38,0.62,3.88,1.51,6.38,1.12c6.5-1,18.25-4.12,26.88-6c2.64-0.57,5.38-1.5,7.62-2.38","M45.62,15.62c0.75,1.25,0.71,3.58,0.38,5.25c-3,15-4.25,22.59-8.38,38.62c-3.25,12.62-5.38,11.12,3.62,4.38c8.29-6.21,19.75-9.5,28.5-9.5c8.62,0,14.58,5.88,14.5,14.5c-0.12,13.5-16.5,20.62-29.88,23.25"],
+  "ぢ": ["M24.5,32.88c1.38,0.62,3.88,1.51,6.38,1.12c6.5-1,18.25-4.12,26.88-6c2.64-0.57,5.38-1.5,7.62-2.38","M45.63,15.88c0.75,1.25,0.71,3.58,0.38,5.25c-3,15-4.25,22.59-8.38,38.62c-3.26,12.63-5.38,11.13,3.62,4.37c8.29-6.21,19.75-9.5,28.5-9.5c8.62,0,14.58,5.88,14.5,14.5c-0.12,13.5-16.5,20.62-29.88,23.25","M74.63,21.75c2.75,1.75,6,5.38,7.75,8.5","M81,16.88c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "っ": ["M23,61.15c1.49,1.29,3.72,1.67,6.46,0.5c14.21-6.07,23.85-8.85,35.68-8.65c9.99,0.17,18.28,5.7,18.18,15.24c-0.15,14.93-18.46,23.39-35.79,25.51"],
+  "つ": ["M14,44.75c1.88,1.62,4.68,2.09,8.12,0.62c17.88-7.62,30-11.12,44.88-10.88c12.56,0.21,22.98,7.17,22.87,19.17c-0.18,18.77-24.75,28.71-45.01,32.08"],
+  "づ": ["M14,44.75c1.88,1.62,4.68,2.09,8.12,0.62c17.88-7.62,30-11.12,44.88-10.88c12.56,0.21,22.98,7.17,22.87,19.17c-0.18,18.77-24.75,28.71-45.01,32.08","M81,18c2.75,1.75,6,5.38,7.75,8.5","M87.38,13.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "て": ["M20.5,26.38c1.87,1.62,4.42,1.97,8.12,1.37c21.75-3.5,33-5.12,50.12-8.38c12.34-2.34,13-0.88,0.38,1.38c-17.89,3.19-33.78,19.12-33.78,37.62c0,20.5,17.91,30.25,35.16,30.25"],
+  "で": ["M20.5,26.38c1.87,1.62,4.42,1.97,8.12,1.37c21.75-3.5,33-5.12,50.12-8.38c12.34-2.34,13-0.88,0.38,1.38c-17.89,3.19-33.78,19.12-33.78,37.62c0,20.5,17.91,30.25,35.16,30.25","M75,41.75c2.75,1.75,6,5.38,7.75,8.5","M81.37,36.88c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "と": ["M35.5,18.38c1.74,0.74,3.62,2.62,4.12,5.37c0.5,2.75,4.75,25,5.38,28.12","M78.12,25.5c0.25,1.88,0.04,4.09-2.25,5.75c-6.37,4.63-13.22,8.49-22.75,15.25c-12.88,9.12-21.62,18.38-21.62,27.5c0,10.12,8.5,13.88,26.88,13.88c6.25,0,14.75-0.12,21.62-1.25"],
+  "ど": ["M35.5,18.38c1.74,0.74,3.62,2.62,4.12,5.37c0.5,2.75,4.75,25,5.38,28.12","M78.12,25.5c0.25,1.88,0.04,4.09-2.25,5.75c-6.37,4.63-13.21,8.49-22.75,15.25c-12.88,9.12-21.62,18.38-21.62,27.5c0,10.12,8.5,13.88,26.88,13.88c6.25,0,14.75-0.12,21.62-1.25","M84.24,14.5c2.75,1.75,6,5.38,7.75,8.5","M90.62,9.62c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "な": ["M22.88,28.96c1.18,0.58,3.3,1.1,5.47,1.05c5.53-0.13,10.9-0.98,16.52-2.42c4.82-1.23,9.13-3.12,11.38-4.22","M42.99,14c0.63,0.89,0.56,2.52,0.31,3.72c-2.96,14.16-7.95,26.56-14.25,37.87c-2.05,3.69-4.25,7.24-6.55,10.65","M72.26,23.25c6.88,2.5,12.62,5.62,14.75,9.5c4.06,7.41-0.25,3.38-3.5,3.88","M68.88,44.62c-1,1.88-2.14,5.24-1.88,8.25c0.62,7,1.5,13.12,1.5,20.62c0,20-27.88,19.75-27.88,9.38c0-5.62,8.25-8.25,13.88-8.25c8.75,0,21.5,3.25,29.75,11.5"],
+  "に": ["M24.53,22.75c1.25,1.5,1.62,3.75,1.12,6.38c-3,15.88-9,32.5-7.38,47.62c2.02,18.84,4.5,5.75,8.5-3.5","M53.2,30.64c0.96,0.79,2.44,1.58,5.1,1.35c6.98-0.61,15.01-3.3,22.04-3.36c13.19-0.11,1.5,3.75-8.39,7.35","M52.53,68c1.76,12.92,11.92,16.01,24.23,14.93c5.08-0.45,8.9-0.8,14.27-2.06"],
+  "ぬ": ["M25.38,28.5c2,1.38,2.97,3.23,3.38,5.88c1.87,12.18,4.12,23.92,8.54,34.67c1.79,4.36,3.96,8.33,6.84,12.46","M57.12,19.25c0.88,2.12,1.06,3.79,0.62,5.88c-3.12,15-13.14,39.81-18.12,48.62c-11.87,21-20.62,1.25-20.62-4.5c0-22.63,43.75-44.25,62.36-29.59c7.66,6.03,9.8,14.58,9.14,23.34c-2,26.75-32.88,28.38-32.88,16.88c0-9.38,17.38-7.12,27.12-1.12c3.1,1.91,7.25,5.25,9.5,7.5"],
+  "ね": ["M33.29,14.5c1.62,1.62,2.1,3.21,1.88,5.88c-1.03,11.93-2.06,31.66-2.53,53.12c-0.1,4.62-0.18,9.31-0.22,14","M17.16,37.88c1.62,0.88,3.25,1.38,5.62,0.75c2.14-0.56,7.8-2.31,12.37-4.03c6.26-2.35,6.88-1.47,3.12,3.63c-5.56,7.53-13.02,17.38-18.48,26.77c-5.6,9.62-3.45,8.3,2,3c19.12-18.62,38.5-39.12,54.12-39.12c11.38,0,12.88,11.25,12.88,32.5c0,28.62-30.18,24.88-30.18,16.26c0-9.63,18.73-7.82,28.06-1.88c2.75,1.75,5.88,4.88,7.5,6.75"],
+  "の": ["M53.82,28.62c1,1.5,1.34,4.12,0.88,6.62c-1.75,9.5-6.89,25-10.75,33.12c-9.63,20.26-16.55,14.74-24.38-1.98c-9.13-19.5,23.5-48.88,50.63-40.38c32.38,10.15,28,54.62-4.75,60.88"],
+  "は": ["M24.51,18c1.25,1.5,2.15,4,1.62,6.62c-3.5,17.62-6.98,36.4-4,54.88c2.5,15.5,1.12,2,5.62-6.25","M49.64,37.89c2.41,1.57,4.85,2.16,7.8,1.71c9.36-1.43,17.46-2.94,23.4-4.57c3.12-0.86,5.96-1.29,7.8-1.29","M69.77,16.5c2.25,2.12,2.88,4.12,2.88,6.5c0,2.38,1.5,38.62,1.5,48c0,22.5-30.62,19.62-30.62,10.5c0-9.75,23.88-5.62,29.5-2.88c5.62,2.74,11.98,8.26,13.36,9.38"],
+  "ば": ["M24.75,17.75c1.25,1.5,1.9,4.25,1.38,6.88c-3.5,17.62-6.98,36.4-4,54.88c2.5,15.5,1.12,2,5.62-6.25","M49.88,37.89c2.41,1.57,4.85,2.41,7.8,1.96c9.36-1.43,17.21-3.19,23.15-4.82c3.12-0.86,5.96-1.29,7.8-1.29","M69.75,16.5c2.26,2.12,2.88,4.12,2.88,6.5c0,2.38,1.5,38.62,1.5,48c0,22.5-30.62,19.62-30.62,10.5c0-9.75,23.88-5.62,29.5-2.88c5.62,2.74,12,8.25,13.38,9.38","M84.75,15.25c2.75,1.75,6,5.38,7.75,8.5","M91.13,10.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ぱ": ["M24.51,18c1.25,1.5,2.15,4,1.62,6.62c-3.5,17.62-6.98,36.4-4,54.88c2.5,15.5,1.12,2,5.62-6.25","M49.64,37.89c2.41,1.57,4.85,2.16,7.8,1.71c9.36-1.43,17.46-2.94,23.4-4.57c3.12-0.86,5.96-1.29,7.8-1.29","M69.77,16.5c2.25,2.12,2.88,4.12,2.88,6.5c0,2.38,1.5,38.62,1.5,48c0,22.5-30.62,19.62-30.62,10.5c0-9.75,23.88-5.62,29.5-2.88c5.62,2.74,11.98,8.26,13.36,9.38","M91.01,24.38c-9.62,0-9.25-14.25,0-14.25c9.76-0.01,9.5,14.25,0,14.25"],
+  "ひ": ["M20,25.12c1.25,0.88,3.75,2.25,6.5,1.38c2.75-0.87,7.31-2.38,11.38-4.5c6-3.12,8.42-1.01,4.25,4c-27.13,32.62-23.76,58.5-1.52,62.88c18.07,3.56,37.63-16.38,35.63-56.51c-0.72-14.5-0.17-14.78,4.12-1.75c3.76,11.38,10.26,20.76,16.14,26.5"],
+  "び": ["M20,25.12c1.25,0.88,3.75,2.25,6.5,1.38c2.75-0.87,7.31-2.38,11.38-4.5c6-3.12,8.42-1.01,4.25,4c-27.13,32.62-23.76,58.5-1.52,62.88c18.07,3.56,37.63-16.38,35.63-56.51c-0.72-14.5-0.17-14.78,4.12-1.75c3.76,11.38,10.26,20.76,16.14,26.5","M86.5,13.5c2.75,1.75,6,5.38,7.75,8.5","M92.87,8.62c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ぴ": ["M20,25.12c1.25,0.88,3.75,2.25,6.5,1.38c2.75-0.87,7.31-2.38,11.38-4.5c6-3.12,8.42-1.01,4.25,4c-27.13,32.62-23.76,58.5-1.52,62.88c18.07,3.56,37.63-16.38,35.63-56.51c-0.72-14.5-0.17-14.78,4.12-1.75c3.76,11.38,10.26,20.76,16.14,26.5","M93.87,22.12c-9.62,0-9.25-14.25,0-14.25c9.75,0.01,9.5,14.25,0,14.25"],
+  "ふ": ["M42.63,15.62c3.62,3.38,7.5,5.38,12.74,6.13c9.59,1.37,3.5,3.38-1.88,6.12","M43.63,46.88c1.88,4.62,7.5,9.41,14.25,17.5c10.62,12.74,0.49,30-19.13,21.62","M16.5,73.38c0.75,4,1.88,8.12,5,10.12c1.16,0.74,0.12-3.38,13.25-9.12","M80.13,61.88c5.12,3.38,10.28,7.49,11.38,8.88c6.75,8.5-0.25,4.62-4.62,7.12"],
+  "ぶ": ["M42.12,15.62c3.62,3.38,7.5,5.38,12.75,6.12c9.59,1.37,3.5,3.38-1.88,6.12","M43.12,46.88c1.88,4.62,7.5,9.41,14.25,17.5c10.62,12.75,0.5,30-19.12,21.62","M16.5,73.88c0.75,4,1.88,8.12,5,10.12c1.16,0.74,0.12-3.38,13.25-9.12","M79.62,61.88c5.5,3.38,10.28,7.49,11.38,8.88c6.75,8.5-0.25,4.62-4.62,7.12","M73.62,16.25c2.75,1.75,6,5.38,7.75,8.5","M80,11.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ぷ": ["M42.13,15.62c3.62,3.38,7.5,5.38,12.74,6.13c9.59,1.37,3.5,3.38-1.88,6.12","M43.13,46.88c1.88,4.62,7.5,9.41,14.25,17.5c10.62,12.74,0.49,30-19.13,21.62","M16.5,73.88c0.75,4,1.88,8.12,5,10.12c1.16,0.74,0.12-3.38,13.25-9.12","M79.63,61.88c5.5,3.38,10.28,7.49,11.38,8.88c6.75,8.5-0.25,4.62-4.62,7.12","M80.87,26.62c-9.62,0-9.25-14.25,0-14.25c9.76,0.01,9.5,14.25,0,14.25"],
+  "へ": ["M15,48.75c2.25,1.62,4.67,1.96,7-0.38c3.62-3.62,7.46-6.54,11.25-10.5c5.5-5.75,8.48-4.75,13.12-0.88c12.12,10.12,30.38,25.12,33.38,27.38c3,2.26,12.37,10.38,13.87,11.63"],
+  "べ": ["M15,48.75c2.25,1.62,5,1.38,7.62-1c3.89-3.52,6.12-5.75,10.62-9.88c5.88-5.37,8.49-4.75,13.14-0.87c12.12,10.12,30.38,25.12,33.38,27.38c3,2.26,12.37,10.37,13.87,11.62","M66.76,26.75c2.75,1.75,6,5.38,7.75,8.5","M73.13,21.88c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ぺ": ["M15,48.75c2.25,1.62,4.67,1.96,7-0.38c3.62-3.62,7.46-6.54,11.25-10.5c5.5-5.75,8.48-4.75,13.12-0.88c12.12,10.12,30.38,25.12,33.38,27.38c3,2.26,12.38,10.38,13.88,11.63","M73.63,36.75c-9.62,0-9.25-14.25,0-14.25c9.75,0,9.5,14.25,0,14.25"],
+  "ほ": ["M24.51,18.75c1.25,1.5,2.15,4,1.62,6.62c-3.5,17.63-6.98,37.4-4,55.88c2.5,15.5,1.12,2,5.62-6.25","M53.08,21.13c1.9,1.28,3.82,1.76,6.14,1.4c7.36-1.17,13.73-2.4,18.41-3.73c2.46-0.7,4.69-1.05,6.13-1.05","M53.83,44.3c2.21,1.44,4.46,1.98,7.16,1.57c8.59-1.31,15.78-2.44,21.23-3.94c2.87-0.79,5.72-1.18,7.41-1.18","M72.51,23c1.38,1.62,1.62,4.12,1.62,6.5c0,2.38,2,35.12,2,44.5c0,17.5-29.88,17.12-29.88,8c0-9.75,21.38-7.88,29.5-2.88c5.33,3.28,12,8.25,13.38,9.38"],
+  "ぼ": ["M24.51,18.75c1.25,1.5,2.15,4,1.62,6.62c-3.5,17.63-6.98,37.4-4,55.88c2.5,15.5,1.12,2,5.62-6.25","M53.08,21.13c1.9,1.28,3.82,1.76,6.14,1.4c7.36-1.17,13.73-2.4,18.41-3.73c2.46-0.7,4.69-1.05,6.13-1.05","M53.83,44.3c2.21,1.44,4.46,1.98,7.16,1.57c8.59-1.31,15.78-2.44,21.23-3.94c2.87-0.79,5.72-1.18,7.41-1.18","M72.51,23c1.38,1.62,1.62,4.12,1.62,6.5c0,2.38,2,35.12,2,44.5c0,17.5-29.88,17.12-29.88,8c0-9.75,21.38-7.88,29.5-2.88c5.33,3.28,12,8.25,13.38,9.38","M87.51,26c2.75,1.75,6,5.38,7.75,8.5","M93.88,21.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ぽ": ["M24.51,19c1.25,1.5,2.15,4,1.62,6.62c-3.5,17.62-6.98,37.4-4,55.88c2.5,15.5,1.12,2,5.62-6.25","M53.08,21.38c1.9,1.28,3.82,1.76,6.14,1.4c7.36-1.17,13.73-2.4,18.41-3.73c2.46-0.7,4.69-1.05,6.13-1.05","M53.83,44.55c2.21,1.44,4.46,1.98,7.16,1.57c8.59-1.31,15.78-2.44,21.23-3.94c2.87-0.79,5.72-1.18,7.41-1.18","M72.51,23.25c1.38,1.62,1.62,4.12,1.62,6.5c0,2.38,2,35.12,2,44.5c0,17.5-29.88,17.12-29.88,8c0-9.75,21.38-7.88,29.5-2.88c5.33,3.28,12,8.25,13.38,9.38","M95.13,34.5c-9.62,0-9.25-14.25,0-14.25c9.75,0,9.5,14.25,0,14.25"],
+  "ま": ["M29.83,32.28c2.2,1.15,4.43,1.5,7.14,1.26c11.54-1.04,25.94-3.12,34.66-4.85c2.87-0.57,5.45-0.44,7.13-0.44","M33.83,51.84c2.45,1.61,4.94,1.72,7.94,1.26c9.52-1.46,17.87-3.1,27.03-5.16c3.22-0.72,6.34-1.32,8.21-1.32","M55.81,14c1.52,1.8,1.8,4.57,1.8,7.19c0,2.63,0.46,43.88,0.46,54.25c0,21.3-30.07,19.96-30.07,9.86c0-10.79,25.88-9.93,38.57-3.18c6.12,3.25,11.55,6.38,14.8,9.13"],
+  "み": ["M32.5,26c1.88,1.75,4.06,1.7,6.88,1.25c3.88-0.62,7.62-1.75,11.88-3.12c4.26-1.37,6.25-0.12,4.5,5.12c-1.75,5.24-6.66,17.39-12,30.12c-13.63,32.51-29.26,29.26-29.26,18.63c0-14.25,20.48-15.36,33-13.5c18.5,2.75,30,6.62,44.38,14.25","M79.38,54.75c0.75,2.38,0.49,4.37,0,6.25c-2.12,8.12-7.5,25-22.12,33.75"],
+  "む": ["M19.59,31.65c2.1,1.55,4.24,1.66,6.81,1.21c8.17-1.41,15.33-2.98,23.19-4.96c2.76-0.69,5.44-1.27,7.05-1.27","M37.02,15.5c1.62,1.25,2.31,2.88,2.12,5.25c-0.88,11.12-1.5,20.75-4,34.88c-3.61,20.44-19.25,16.99-18.62,7.37c0.5-7.74,6.25-12.86,12.62-13.5c5-0.5,14.28,1.93,5.88,15c-12.62,19.62-11.42,24.51,5.11,25.54c10.98,0.68,19.26,0.72,28.49-0.92c14.15-2.5,7.4-2.63,7.4-11.13","M78.52,36.25c6.88,3.12,11.71,5.95,14.88,10.12c6.25,8.25-1.38,3.62-4.5,4.5"],
+  "め": ["M27.48,31.75c1.75,1,2.41,3.09,2.5,5.25c0.5,11.62,2.75,23.5,7.25,31.38c1.39,2.44,5.38,8.5,7.25,10.38","M59.6,19.38c1,1.5,1.35,4.12,0.88,6.62c-2.75,14.62-13.62,37.75-20.1,47.24c-12.28,17.14-16.78,13.14-22.28,0.64c-5.38-15.38,26.4-42.18,53.42-35.28c29.08,8.27,23.96,46.02-7.98,50.15"],
+  "も": ["M49.17,14.75c1.88,1.88,1.86,4.52,1.12,8c-3,14.25-5,26.62-7,42.12c-2.55,19.73-0.75,29.88,17,29.86c20.25-0.02,28.63-13.11,20.01-35.73","M26.54,34.62c1.12,0.88,2.87,2.21,6,2c11.12-0.75,20-2.12,27.74-3.46c3.88-0.67,5.88-1.17,8.88-1.04","M26.42,53.38c-1.5,4,1,6.75,7.75,6.75c8.75,0,17.62-1,22.88-1.88c2.01-0.33,5.38-1,7.5-1.75"],
+  "ゃ": ["M26,61.07c1.49,1.29,4.16,1.98,6.84,0.69c14.68-7.03,28.36-15.36,40.32-15.26c7.16,0.11,12.7,3.28,12.63,9.75c0,6.61-8.63,13.15-19.43,14.14","M49.1,34.5c4.07,0.69,8.25,3.21,9.12,5.25c1.69,3.97-0.79,1.88-2.28,2.08","M35.77,40.99c1.88,1.49,2.35,2.77,2.82,4.67c2.08,8.33,8.82,32.37,11.7,41.39c0.51,1.62,1.49,4.96,2.28,7.44"],
+  "や": ["M18,49.38c1.88,1.62,5.25,2.5,8.62,0.88c18.51-8.88,35.76-19.38,50.83-19.26c9.02,0.14,16.01,4.13,15.93,12.29c0,8.33-10.88,16.58-24.5,17.83","M47.13,15.88c5.12,0.88,10.41,4.05,11.5,6.62c2.12,5-1,2.38-2.88,2.62","M30,24.38c2.38,1.88,3.28,2.87,3.88,5.25c2.62,10.5,11.12,41.12,14.75,52.5c0.65,2.04,1.88,6.25,2.88,9.38"],
+  "ゅ": ["M27.74,40.79c1.1,1.2,1.61,3.3,1.2,5c-2.3,9.4-3.2,17.79-1.7,27.99c2.22,15.08,0.9,3.1,2.6-1.2c7.19-18.19,21.79-27.59,35.49-27.59c13.5,0,17.49,9.1,17.49,16.2c0,21.89-24.69,23.69-34.39,13.4","M57.63,33.89c2.1,1.4,2.53,2.5,2.8,5.7c0.7,8.4,1.12,14.97,1.3,23.49c0.4,19.19-5,25.59-9.9,31.39"],
+  "ゆ": ["M21.05,25.38c1.38,1.5,2.02,4.13,1.5,6.25c-2.88,11.75-4,22.25-2.12,35c2.77,18.85,1.12,3.88,3.25-1.5c9-22.75,27.24-34.5,44.38-34.5c16.88,0,21.88,11.38,21.88,20.25c0,27.38-30.88,29.62-43,16.75","M58.42,16.75c2.62,1.75,3.17,3.13,3.5,7.12c0.88,10.5,1.4,18.72,1.62,29.38c0.5,24-6.25,32-12.38,39.25"],
+  "ょ": ["M57.8,50.06c5.98-1.02,10.95-2.09,14.74-3.25c1.99-0.61,3.8-0.91,4.98-0.91","M54.91,33c1.79,1.69,2.38,3.28,2.29,5.16c-0.6,13.49-0.1,27.68,1.11,42.47c1.5,18.31-27.81,16.56-27.81,9.12c0-9.53,20.92-6.35,28.68-3.27c6.46,2.56,9.18,3.87,14.76,8.23"],
+  "よ": ["M58.24,35.38c7.5-1.28,13.74-2.63,18.5-4.1c2.5-0.77,4.77-1.15,6.25-1.15","M54.62,13.88c2.25,2.12,2.98,4.13,2.88,6.5c-0.75,17-0.12,34.88,1.39,53.5c1.88,23.07-34.89,20.88-34.89,11.5c0-12,26.25-8,35.98-4.12c8.1,3.23,11.52,4.88,18.52,10.38"],
+  "ら": ["M35.33,15c3.75,3,9.22,4.41,16.5,4.25c11.12-0.25-0.25,2.38-1.25,3.5","M35.83,35.75c-2.14,4.34-2.79,8.67-3.11,13.24c-0.42,5.84-0.31,12.05-2.14,19.13c-3.16,12.27,1.49,4.77,3,3.5c11.88-10,21.7-12.67,32.61-12.49c9.21,0.15,16.85,5.19,16.76,13.88c-0.12,13.6-14.24,21.49-32.49,22.49"],
+  "り": ["M38.75,25.25c1.25,1.5,2.24,4.03,1.62,6.62c-2.88,12.13-6.29,29.65-4.25,42.38c2,12.5,1.75-0.75,5.62-6.25","M69.37,18.75c2.25,2.12,2.88,4.12,2.88,6.5c0,2.38,0,26.38,0,35.75c0,16.5-5,25.75-12.62,33.12"],
+  "る": ["M34.31,20.38c1.75,1.25,4.62,2.62,8.5,1.5c3.88-1.12,9.62-2.5,15.62-4.62c6-2.12,7.5-0.12,4.38,4.25c-3.12,4.37-18.89,24.62-27.75,34c-8.5,9-13.09,11.89,0.75,3.25c15.62-9.75,43-10.88,43,13.38c0,22.5-40.88,24.5-40.88,12.62c0-11.25,18.12-8.75,24.38-0.38"],
+  "れ": ["M34.48,13c1.5,1.38,2.83,3.74,2.5,6.38c-0.5,4-2.75,44.5-2.75,52.88c0,8.38,0.12,16.62,0.12,19.5","M16.98,40.75c2.12,1.38,3.74,1.46,7.5,0c4.5-1.75,6.55-2.66,13-5.5c4.25-1.88,4.4,0.24,2.5,3.5c-5.25,9-10.5,16.75-18.88,27.62c-7.55,9.81-6.93,12.85,3.25,3.12c14-13.38,20.34-19.76,33.88-32.5c6.38-6,19.39-12.09,18.14,0.88c-1.02,10.63-1.89,22.13-2.29,30.75c-1.02,21.71,11.53,18,20.15,8.63"],
+  "ろ": ["M36.95,21.88c1.5,2,4.62,3.62,8.5,2.5c3.88-1.12,8.12-2.25,14.12-4.38c6-2.13,6.53-0.1,3.38,4.25c-7.88,10.88-18,22.75-27.5,35.25c-7.49,9.86-10.68,11.32,2.88,2.25c17.38-11.62,46.62-14,46.62,8.12c0,15.62-16,22.5-32.12,25.12"],
+  "ゎ": ["M42.57,32.38c1.18,1.08,1.75,2.94,1.58,5.03c-0.79,9.37-2.17,35.11-2.17,41.71c0,6.61-0.49,13.12-0.49,15.38","M26.33,52.97c1.7,1.1,2.94,1.04,5.99,0c4.69-1.6,7.83-2.52,12.97-4.79c3.39-1.5,4.89,0,2.19,3.19c-5.36,6.36-10.38,13.17-17.66,22.25c-6.18,7.71-6.02,9.74,2.39,2.29c17.46-15.46,39.71-28.43,50.68-16.76c11.46,12.19,1.3,29.23-18.66,34.02"],
+  "わ": ["M38.53,14.75c1.5,1.38,2.22,3.73,2,6.38c-1,11.87-2.75,44.49-2.75,52.87c0,8.38-0.62,16.62-0.62,19.5","M17.53,40.75c2.12,1.38,3.68,1.3,7.5,0c5.88-2,9.8-3.16,16.25-6c4.25-1.88,6.12,0,2.75,4c-6.72,7.96-13,16.5-22.12,27.88c-7.75,9.66-7.54,12.21,3,2.88c21.88-19.38,49.75-35.62,63.5-21c14.36,15.27,1.62,36.62-23.38,42.62"],
+  "ゐ": ["M34.52,21.46c1.4,1.87,4.4,3.64,7.94,2.33c4.86-1.79,7.08-2.51,11.19-3.83c4.92-1.58,5.5-0.31,3.8,4.42c-6.5,18-10.3,34.39-18.88,50.25c-13.25,24.5-27.45,4.14-13-14c12.75-16,63.75-27,63.38,6.12c-0.3,26.12-38.25,26.12-38.25,15.5c0-9.62,18.12-9.5,24.62,0"],
+  "ゑ": ["M39.58,20.71c1.46,1.04,3.77,2.35,7.07,1.75c3.84-0.71,8.01-2.08,13-3.85c4.99-1.77,6.73,0.8,3.64,4.04c-6.8,7.11-17.87,18.91-26.34,28.04c-7.7,8.31-10.18,9.7,1.13,2.2c16.05-10.64,37.05-13.39,37.05,1.61c0,14.5-31.38,14.5-31.38,5.25c0-5.62,10.75-5.25,10.75-1c0,3.5-3.84,5.93-7.25,8.38c-5.75,4.12-14.86,10.78-25.25,17.5c-8.5,5.5-6.46,7.93,1.38,2.62c8.5-5.75,9.23-5.58,17.38-1.38c11.12,5.75,11.24,5.74,18-0.38c13.25-12,24.25-8.12,31.5,0.5c8.47,10.07-3.12,2.62-5.25,3.75"],
+  "を": ["M28.56,27.87c1.62,1.13,3.17,1.64,6.01,1.12c10.86-1.99,16.74-3.37,24.71-4.72c3.64-0.62,5.65-0.93,8.4-0.75","M49.93,14.38c0.75,1,1.48,3.22,0.38,5.62c-4.62,10.12-10,20.75-17.12,30.25c-9.25,12.33-9.25,11.19,2.12,2.5c9-6.88,23.75-12.12,22.88,19.88","M83.06,39.88c0.62,1.75,0,4-3,5.75c-3,1.75-49.62,24.16-44.75,38.25c3.28,9.48,17.93,9.12,29.98,7.75c4.48-0.51,9.15-1.12,12.4-1.75"],
+  "ん": ["M56.35,16.5c0.75,1.75,1.13,5.83-0.38,8.25c-7,11.25-27.22,43.47-33.88,54.37c-9,14.75-7.62,16.25,1.5,1.25c17.86-29.36,32-23.76,32-6.75c0,25,19,26.5,34.25-5"],
+  "ゔ": ["M42,16.25c5.62,2.12,9.62,3,12.88,3c8.27,0,8,1.12-0.38,5.5","M33,43.12c2.12,1.12,4.12,2.88,8.5,1.38c4.38-1.5,12.75-7.12,18.5-7c5.75,0.12,10.25,5,10.25,18c0,15.5-8.25,30.25-24.38,41.25","M69.74,17.75c2.75,1.75,6,5.38,7.75,8.5","M76.12,12.88c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ゕ": ["M26.27,50.39c1.73,1.5,4.29,2.15,7.97,0.92c23.56-7.85,27.25-3.81,27.25,7.04c0,8.66-1.15,16.13-3.93,23.33c-7.04,18.25-10.04,16.06-14.9,10.05","M48.32,30.88c0.92,1.27,1.2,4.34,0.46,6.58c-4.62,14.09-16.65,37.81-18.13,40.53c-2.88,5.31-5.88,10.97-8.65,15.01","M75,43.92c6.93,6.35,12.24,14.55,13.86,22.98"],
+  "ゖ": ["M28.76,34.57c1.09,1.31,2.29,3.28,1.86,5.57c-2.62,13.88-5.68,25.79-4.26,39.01c1.77,16.47,1.97,4.15,5.9-3.06","M54.11,51.07c1.86,1.2,3.74,1.65,6.01,1.31c7.21-1.09,13.45-2.25,18.03-3.5c2.4-0.66,4.59-0.98,6.01-0.98","M69.84,29.88c1.86,1.2,2.51,2.94,2.51,4.48c0,10.16,0.11,17.81,0.11,26.34c0,18.14-0.55,26.99-10.93,36.93"],
+  "ァ": ["M28,42.54c1.91,1.22,3.16,1.13,6.74,0.59c9.03-1.37,29.93-5.05,38.25-6.06c4.14-0.5,6.33,2.36,2.08,5.47c-5.35,3.91-10.4,7.43-18.42,12.52","M51.55,54.18c0.62,1.17,0.8,2.53,0.45,4.13c-3.16,14.45-7.75,24.91-15.58,35.57"],
+  "ア": ["M23.5,26.25c2.41,1.56,3.98,1.44,8.51,0.75c11.4-1.75,37.77-5.5,48.28-6.78c5.23-0.64,7.99,2.06,2.62,6.04c-6.75,5-13.12,9.5-23.25,16","M53.12,41.12c0.79,1.5,1.02,3.24,0.58,5.28c-4.04,18.48-9.92,31.85-19.92,45.48"],
+  "ィ": ["M67.75,32.78c0.1,1.39-0.27,3.07-1.28,4.37c-7.98,10.24-18.72,23.55-35.97,34.08","M57.19,54.22c0.81,0.92,1.02,2.46,1.02,3.79c0,1.33,0,26.33,0,27.87c0,1.54-0.1,7.48-0.1,9.63"],
+  "イ": ["M69.75,16.75c0.12,1.75-0.34,3.86-1.62,5.5c-10.13,12.87-23.75,29.63-45.63,42.87","M56.38,43.88c1,1.12,1.25,3,1.25,4.62c0,1.62,0,32.75,0,34.62c0,1.87-0.13,9.13-0.13,11.76"],
+  "ゥ": ["M54.11,32.25c0.8,0.87,0.99,2.32,0.99,3.58c0,1.26,0,8.33,0,9.78","M32.5,45.62c0.94,0.89,1.15,2.38,1.18,3.67c0.08,3.53,0.27,8.68,0.42,12.98c0.07,1.98,0.13,3.78,0.17,5.15","M34.92,48.96c15.42-1.74,32.02-3.54,38.98-4.51c6.96-0.97,6.59,0.65,4.97,5.32c-3.97,11.52-15.04,33.98-32.11,44.85"],
+  "ウ": ["M53.25,14.62c1,1.12,1.25,3,1.25,4.62c0,1.62,0,10.76,0,12.64","M26.5,31.25c1,1.12,1.22,3,1.25,4.62c0.09,4.45,0.29,10.95,0.45,16.37c0.07,2.5,0.14,4.77,0.18,6.5","M29.12,35.88c19.38-2.25,40.25-4.25,49-5.5c8.75-1.25,8.28,0.84,6.25,6.88c-5,14.88-20.12,43.5-41,56.62"],
+  "ェ": ["M36.22,52.7c1.84,0.56,4.08,0.53,5.93,0.24c6.8-1.08,17.77-2.28,26.71-3.07c1.8-0.16,3.59-0.15,5.37,0.18","M53.25,54.65c0.79,0.9,1.04,2.4,0.99,3.7c-0.14,3.79-0.4,10.3-0.65,17.78c-0.06,1.85-0.12,3.25-0.18,5.19","M26,84.03c2.71,0.7,6.01,0.65,8.73,0.29c14.11-1.84,27.4-2.86,40.12-2.89c2.65-0.01,5.73,0.31,8.3,1.33"],
+  "エ": ["M31.87,35.68c2.32,0.71,5.14,0.66,7.48,0.29c8.57-1.35,22.4-2.85,33.66-3.85c2.26-0.2,4.52-0.19,6.77,0.22","M53.34,38.13c1,1.12,1.31,3,1.25,4.62c-0.18,4.74-0.51,12.89-0.83,22.25c-0.08,2.31-0.16,4.7-0.23,7.12","M19,75.46c3.41,0.94,7.57,0.88,11.01,0.39c17.78-2.48,34.53-3.86,50.55-3.9c3.34-0.01,7.23,0.42,10.46,1.8"],
+  "ォ": ["M26,50.69c3.11,1.49,6,1.3,8.75,0.86c14.32-2.3,27.34-3.76,40.17-4.53c2.65-0.16,5.05,0.14,8.31,1.15","M58.49,33.57c1.05,1.18,1.31,3.16,1.31,4.86c0,6.36-0.2,36.73-0.2,46.58c0,16.19-4.67,5.96-7.35,4.37","M58.41,49.45c0,1.29-1.31,2.87-2.88,4.77c-6.26,7.55-16.79,18.08-27.51,26.22"],
+  "オ": ["M19.5,37.85c3.91,1.78,7.55,1.55,11.01,1.02c18.03-2.75,34.4-4.5,50.55-5.41c3.34-0.19,6.35,0.17,10.46,1.38","M60.38,16.38c1.32,1.49,1.65,3.97,1.65,6.12c0,8-0.25,46.23-0.25,58.63c0,20.38-5.88,7.5-9.25,5.5","M60.29,36.38c0,1.62-1.64,3.61-3.62,6c-7.88,9.5-21.12,22.75-34.62,33"],
+  "カ": ["M25.5,40.62c1.88,1.25,4.51,1.87,7.12,1.5c17.88-2.5,32.78-4.51,42.5-5.88c7.12-1,10.59,0.24,8.62,7.88c-2.12,8.25-4.47,17.81-9.25,29.12c-10.49,24.88-14.11,14.51-19.24,11.88","M55.88,17.12c0.88,1.62,1.29,3.83,0.75,6.75c-4.25,22.88-15.88,45.25-30.25,58.88"],
+  "ガ": ["M25.5,40.62c1.88,1.25,4.51,1.87,7.12,1.5c17.88-2.5,32.78-4.51,42.5-5.88c7.12-1,10.59,0.24,8.62,7.88c-2.12,8.25-4.47,17.81-9.25,29.12c-10.49,24.88-14.11,14.51-19.24,11.88","M55.88,17.12c0.88,1.62,1.29,3.83,0.75,6.75c-4.25,22.88-15.88,45.25-30.25,58.88","M83,19.75c2.75,1.75,6,5.38,7.75,8.5","M89.38,14.88c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "キ": ["M27,40.5c1.75,0.62,4.77,1.09,7.25,0.38c11.75-3.38,30.62-8.13,37.5-9.88c2.62-0.67,6.75-1.12,9-1","M19.5,65.8c2.28,0.84,6.24,1.18,9.46,0.17c17.79-5.59,32.67-9.09,49.17-12.99c3.43-0.81,8.81-1.52,11.74-1.35","M48.87,16.75c2.5,1.75,3.43,3.24,3.88,6.12c2.12,13.62,6.38,45.38,8.25,59.25c0.4,3,1,8.38,1.38,11.12"],
+  "ギ": ["M27,40.5c1.75,0.62,4.77,1.09,7.25,0.38c11.75-3.38,30.62-8.13,37.5-9.88c2.62-0.67,6.75-1.12,9-1","M19.5,65.8c2.28,0.84,6.24,1.18,9.46,0.17c17.79-5.59,32.67-9.09,49.17-12.99c3.43-0.81,8.81-1.52,11.74-1.35","M48.87,16.75c2.5,1.75,3.43,3.24,3.88,6.12c2.12,13.62,6.38,45.38,8.25,59.25c0.4,3,1,8.38,1.38,11.12","M81.87,15.13c2.75,1.93,6,5.93,7.75,9.37","M88.25,10c2.71,1.73,5.9,5.32,7.62,8.41"],
+  "ク": ["M50,19.62c0.38,1.5,0.34,3.48-0.5,5.12c-4.12,8.12-7.88,15.5-16.12,24.12","M51.25,28.62c2.62,0.25,5.67-0.39,7.62-0.88c6-1.5,9.75-2.38,15.12-3.88c5.79-1.62,7.53-0.42,5.12,4.88c-10.36,22.88-26.24,44.14-48.61,60.51"],
+  "グ": ["M50,19.62c0.38,1.5,0.34,3.48-0.5,5.12c-4.12,8.12-7.88,15.5-16.12,24.12","M51.25,28.62c2.62,0.25,5.67-0.39,7.62-0.88c6-1.5,9.75-2.38,15.12-3.88c5.79-1.62,7.53-0.42,5.12,4.88c-10.36,22.88-26.24,44.14-48.61,60.51","M83.75,13.5c2.75,1.75,6,5.38,7.75,8.5","M90.13,8.62c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ケ": ["M40.96,17.88c0.44,1.9,0.39,4.42-0.59,6.5c-4.82,10.31-9.21,19.67-18.87,30.62","M37.88,37.62c2.12,0.88,4.15,1.04,6.62,0.5c12.62-2.75,25.5-4.88,35.75-6.5c3.61-0.57,6.25-0.75,9.25-0.5","M64.46,38.88c0.44,1.9,0.5,4.27-0.08,6.5c-3.63,13.75-9.25,31.25-24.63,43.87"],
+  "ゲ": ["M40.96,17.88c0.44,1.9,0.39,4.42-0.59,6.5c-4.82,10.31-9.21,19.67-18.87,30.62","M37.88,37.62c2.12,0.88,4.15,1.04,6.62,0.5c12.62-2.75,25.5-4.88,35.75-6.5c3.61-0.57,6.25-0.75,9.25-0.5","M64.46,38.88c0.44,1.9,0.5,4.27-0.08,6.5c-3.63,13.75-9.25,31.25-24.63,43.87","M83.62,13.94c2.95,1.81,6.43,5.57,8.3,8.81","M90.12,9.12c3.02,1.63,6.58,5,8.5,7.9"],
+  "コ": ["M30.13,35c1.75,1,3.01,2.18,6.5,1.62c14.25-2.25,29.62-4.25,37.38-5.5c9.37-1.51,9.88,0.25,8,7.5c-2.77,10.71-5.25,22.12-7,34.88","M27.5,77.38c2.62,1.12,4.38,1.51,8.25,1c11.38-1.5,22.62-3,33.75-3.38c4-0.13,5.88,0,9.62,0.5"],
+  "ゴ": ["M30.13,35c1.75,1,3.01,2.18,6.5,1.62c14.25-2.25,29.62-4.25,37.38-5.5c9.37-1.51,9.88,0.25,8,7.5c-2.77,10.71-5.25,22.12-7,34.88","M27.5,77.38c2.62,1.12,4.38,1.51,8.25,1c11.38-1.5,22.62-3,33.75-3.38c4-0.13,5.88,0,9.62,0.5","M84.75,15.5c2.75,1.75,6,5.38,7.75,8.5","M90.87,10.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "サ": ["M16.5,44.34c2.84,1.27,4.77,1.91,8.93,1.13c17.2-3.22,40.45-5.35,58.53-5.34c4.33,0,6.92,0.37,10.42,0.82","M36.63,23.38c1.12,1.38,1.19,2.5,1.25,4.75c0.25,9,0.38,20.25,0.75,28.88c0.14,3.25,0.38,7.12,0.38,9.25","M69.63,16.62c1.5,2,1.62,2.87,1.62,6.25c0,8.25-0.16,9-0.16,15.88c0,23.25-9.34,42.5-23.21,53"],
+  "ザ": ["M16.5,44.34c2.84,1.27,4.77,1.91,8.93,1.13c17.2-3.22,40.45-5.35,58.53-5.34c4.33,0,6.92,0.37,10.42,0.82","M36.63,23.38c1.12,1.38,1.19,2.5,1.25,4.75c0.25,9,0.38,20.25,0.75,28.88c0.14,3.25,0.38,7.12,0.38,9.25","M69.63,16.62c1.5,2,1.62,2.87,1.62,6.25c0,8.25-0.16,9-0.16,15.88c0,23.25-9.34,42.5-23.21,53","M82.75,18.73c2.85,1.78,6.21,5.47,8.03,8.65","M89.5,14.12c2.93,1.57,6.39,4.83,8.25,7.63"],
+  "シ": ["M39.87,19.75c5.14,1.57,9.79,6.01,11.5,8.62","M26,42.62c3.25,0.88,10.25,5.5,12.25,8.13","M33,85c3.75,0.88,7.12,0.49,10.38-1.38c17.87-10.24,32.37-23.87,46.12-42.87"],
+  "ジ": ["M39.87,19.75c5.14,1.57,9.79,6.01,11.5,8.62","M26,42.62c3.25,0.88,10.25,5.5,12.25,8.13","M33,85c3.62,1.62,6.5,0.88,10.38-1.38c17.81-10.34,32.37-23.87,46.12-42.87","M78.5,18.98c2.85,1.78,6.21,5.47,8.03,8.65","M85.25,14.38c2.93,1.57,6.39,4.83,8.25,7.63"],
+  "ス": ["M30.13,29.38c1.75,1.5,4.15,1.98,6.62,1.38c13.25-3.25,24.25-5.62,31.25-7.38c7-1.76,8.64,1.16,6.5,5.75c-11.24,24.12-28.37,45.87-53.5,57.25","M61,57.25c11,7.38,21,17,28,28.62"],
+  "ズ": ["M30.13,29.38c1.75,1.5,4.15,1.98,6.62,1.38c13.25-3.25,24.25-5.62,31.25-7.38c7-1.76,8.64,1.16,6.5,5.75c-11.24,24.12-28.37,45.87-53.5,57.25","M61,57.25c11,7.38,21,17,28,28.62","M85.38,16.5c2.75,1.75,6,5.38,7.75,8.5","M91.76,11.62c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "セ": ["M17,49.38c3.12,1.5,5.04,2.18,8.62,1.38c23.5-5.25,31.24-7.43,50.62-11.62c23.12-5,6.5,7.75-3.25,18.12","M42.38,19.5c2,2.25,2.15,3.5,2.12,6.62c-0.12,17.5-0.88,31.75-0.88,41.12c0,14,3.13,16.99,12.38,17.12c8.38,0.12,14.12,0.12,18,0.12c3.88,0,7.5-0.5,10.5-1.12"],
+  "ゼ": ["M17,49.38c3.12,1.5,5.04,2.18,8.62,1.38c23.5-5.25,31.24-7.43,50.62-11.62c23.12-5,6.5,7.75-3.25,18.12","M42.38,19.5c2,2.25,2.15,3.5,2.12,6.62c-0.12,17.5-0.88,31.75-0.88,41.12c0,14,3.13,16.99,12.38,17.12c8.38,0.12,14.12,0.12,18,0.12c3.88,0,7.5-0.5,10.5-1.12","M83.38,20.25c2.75,1.75,6,5.38,7.75,8.5","M89.76,15.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ソ": ["M23.5,25.5c3.92,4.1,7.71,9.93,10.75,17.88","M83.5,21c1.25,2.5,1.3,4.44,0.12,8.5c-5.87,20.38-26.24,49.5-45.62,61.25"],
+  "ゾ": ["M23.5,26.65c3.83,4.02,7.54,9.72,10.5,17.5","M83,21.9c1.25,2.5,1.3,4.44,0.12,8.5c-5.87,20.37-26.24,49-45.62,60.75","M86.25,10.65c2.75,1.75,6,5.38,7.75,8.5","M92.62,5.77c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "タ": ["M48.83,19.75c0.43,1.72,0.39,4-0.58,5.89c-4.77,9.34-9.1,17.82-18.63,27.73","M49.75,30.38c2.75,0.5,5,0,7.62-0.62c6.02-1.43,10.5-2.62,15.88-4.12c5.79-1.62,8.22,0.31,5.88,5.62c-10.88,24.62-22.13,43.99-50.13,59.99","M43.38,45.62c6.75,3.5,10.62,7.88,14.75,15.25"],
+  "ダ": ["M48.83,19.75c0.43,1.72,0.39,4-0.58,5.89c-4.77,9.34-9.1,17.82-18.63,27.73","M49.75,30.38c2.5,0.62,5.67-0.14,7.62-0.62c6-1.5,10.5-2.62,15.88-4.12c5.79-1.62,8.22,0.31,5.88,5.62c-10.88,24.62-22.13,43.99-50.13,59.99","M43.38,45.62c6.75,3.5,10.62,7.88,14.75,15.25","M83.62,14.19c2.95,1.81,6.43,5.57,8.3,8.81","M90.12,9.38c3.02,1.63,6.58,5,8.5,7.9"],
+  "チ": ["M69.76,15.25c-0.38,2.62-2.01,4.37-3.88,5.38c-7.88,4.25-18.62,9.75-35.5,13.25","M18.5,51.5c2.88,0.88,4.39,1.65,7.88,1.25c22-2.5,36.38-4.25,56.12-4.88c4.88-0.15,7.88,0.51,10.88,1.51","M54.88,30.75c0.88,0.75,1.75,2.49,1.75,4.75c0,6.03,0.03,11.25,0.03,18.27c0,14.98-5.03,29.48-16.53,39.23"],
+  "ヂ": ["M70,15.25c-0.38,2.62-2.26,4.37-4.12,5.38c-7.88,4.25-18.62,9.75-35.5,13.25","M18.5,51.5c2.88,0.88,4.39,1.65,7.88,1.25c22-2.5,36.38-4.25,56.12-4.88c4.88-0.15,7.88,0.51,10.88,1.51","M54.88,30.75c0.88,0.75,1.75,2.49,1.75,4.75c0,6.03,0.03,11.25,0.03,18.27c0,14.98-5.03,29.48-16.53,39.23","M79.88,25.73c2.85,1.78,6.21,5.47,8.03,8.65","M86.63,21.12c2.93,1.57,6.39,4.83,8.25,7.63"],
+  "ッ": ["M29,51.88c1.89,2.42,3.59,7.57,3.89,11.2","M48.24,45.73c2.69,2.83,5.28,7.67,5.58,12.01","M79.34,49.8c0.6,1.82,0.31,4.24-0.6,6.46c-6.08,14.83-16.95,32.44-36.68,41.62"],
+  "ツ": ["M21.5,31.38c2.38,3,4.5,9.38,4.88,13.88","M45.62,23.75c3.38,3.5,6.62,9.5,7,14.88","M84.62,27.88c0.75,2.25,0.39,5.26-0.75,8c-7.63,18.37-21.25,41.12-46,52.5"],
+  "ヅ": ["M21.5,30.62c2.38,3,5,9.38,5.38,13.88","M45.87,23c3.38,3.5,6.62,9.5,7,14.88","M84.62,27.62c0.75,2.25,0.39,5.26-0.75,8c-7.63,18.38-21.25,41.38-46,52.76","M86.5,14.58c2.61,1.91,5.7,5.88,7.36,9.3","M92.68,9.62c2.73,1.8,5.95,5.53,7.69,8.75"],
+  "テ": ["M36.5,21.5c2.12,1.25,4.38,1.59,7.25,1.25c10.62-1.25,16.88-2.25,24.62-3.25c3.73-0.48,5.63-0.5,8.13-0.25","M20,44.12c2.88,1,5.26,1.05,7.5,0.75c22.38-3,37-5.62,54.13-6.12c5.62-0.16,7.75,0,10.38,0.62","M58,43.25c0.88,1,1.32,2.63,1.12,4.38c-1.74,15.37-11.62,34.99-24.62,41.87"],
+  "デ": ["M36.5,21.5c2.12,1.25,4.38,1.59,7.25,1.25c10.62-1.25,16.88-2.25,24.62-3.25c3.73-0.48,5.63-0.5,8.13-0.25","M20,44.12c2.88,1,5.26,1.05,7.5,0.75c22.38-3,37-5.62,54.13-6.12c5.62-0.16,7.75,0,10.38,0.62","M58,43.25c0.88,1,1.32,2.63,1.12,4.38c-1.74,15.37-11.62,34.99-24.62,41.87","M84.25,16.98c2.85,1.78,6.21,5.47,8.03,8.65","M91,12.38c2.93,1.57,6.39,4.83,8.25,7.63"],
+  "ト": ["M44,16.38c1.25,1.12,2.12,3.25,2.12,5.5c0,26.12,0,53.5,0,57.62c0,4.12,0,10.5,0,13.38","M49.24,43.12c11.75,4.12,18.25,10.62,24.5,18.75"],
+  "ド": ["M44,16.38c1.25,1.12,2.12,3.25,2.12,5.5c0,26.12,0,53.5,0,57.62c0,4.12,0,10.5,0,13.38","M49.24,43.12c11.75,4.12,18.25,10.62,24.5,18.75","M66.87,26.75c2.75,1.75,6,5.38,7.75,8.5","M73.24,21.88c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ナ": ["M18.5,44.12c2.62,1,4.77,1.17,9.12,0.5c19.38-3,37.75-4.75,52.38-5.62c3.75-0.22,8.88-0.25,11.88,0.12","M53.26,14.5c1.75,1.25,2.75,3,2.75,6c0,3,0.12,21.5,0.12,24.25c0,20-6,37.62-18.38,49.12"],
+  "ニ": ["M32.63,34.69c2.5,1.19,4.33,1.6,7.45,1.35c11.55-0.91,18.3-2.41,27.04-3.18c2.64-0.23,6.27-0.16,8.39,0.08","M20,74.88c2.62,1,4.78,1.45,9.12,0.75c20.25-3.25,36.5-3.88,52.38-3.88c3.75,0,8,1,11.12,2.38"],
+  "ヌ": ["M33.38,27.62c2.75,1.25,5.38,1.16,8.5,0.62c10.12-1.75,19-3.12,28.62-5c6.67-1.3,7.75-0.12,5.38,5.62c-6.7,16.22-20.63,40.52-48.88,57.89","M44.88,46.38c12,6.75,22.38,15.38,30.62,28.12"],
+  "ネ": ["M51.38,12.38c3.38,2.12,8,5.88,11,10.88","M26.88,36.16c2.62,1.46,5.45,1.93,8.5,1.19c10.75-2.6,20.75-4.98,30.88-7.5c6.53-1.62,7.81,1.27,4.62,4.68c-11.63,12.47-22.76,23.35-48.88,37.97","M54.38,54.12c1.38,1.75,1.62,3.5,1.62,6c0,2.5,0,27.5,0,29.38c0,1.88,0,4,0,6.88","M65.38,53.62c12.5,6,19.88,11.75,24.88,18.88"],
+  "ノ": ["M72.37,25.25c0.75,2,0.92,4.89,0.25,7.25c-7.12,25-25.38,44.75-43.62,56.88"],
+  "ハ": ["M39.33,36.88c0.38,1.14,0.46,2.88-0.12,4.14c-6.33,13.73-13.33,23.86-22.21,32.23","M65.5,36.38c13,9.12,23.12,22.62,28,33.38"],
+  "バ": ["M39.08,36.62c0.38,1.14,0.38,2.84-0.12,4.14c-5.46,13.99-13.08,24.12-21.96,32.49","M65.5,36.38c13,9.12,23.12,22.62,28,33.38","M81.13,21c2.75,1.75,6,5.38,7.75,8.5","M87.5,16.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "パ": ["M39.08,36.62c0.38,1.14,0.38,2.84-0.12,4.14c-5.46,13.99-13.08,24.12-21.96,32.49","M65.5,36.38c13,9.12,23.12,22.62,28,33.38","M86,30.12c-9.62,0-9.25-14.25,0-14.25c9.76,0.01,9.5,14.25,0,14.25"],
+  "ヒ": ["M35.38,44.5c1.75,1.38,4.51,2.19,6.88,1.88c10.24-1.38,17.24-2.88,24.24-4.26c3.01-0.59,7.12-1,9.38-0.88","M31,17.62c1.38,1.26,1.88,3.38,1.88,6.13c0,2.75-0.88,44-0.88,47.25c0,9.75,4,14.62,13.75,14.62c6,0,16.38,0.12,21.38,0c5-0.12,9.5-0.62,13.5-1.5"],
+  "ビ": ["M35.38,44.5c1.75,1.38,4.51,2.19,6.88,1.88c10.24-1.38,17.24-2.88,24.24-4.26c3.01-0.59,7.12-1,9.38-0.88","M31,17.62c1.38,1.26,1.88,3.38,1.88,6.13c0,2.75-0.88,44-0.88,47.25c0,9.75,4,14.62,13.75,14.62c6,0,16.38,0.12,21.38,0c5-0.12,9.5-0.62,13.5-1.5","M78.13,26.25c2.75,1.75,6,5.38,7.75,8.5","M84.5,21.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ピ": ["M35.38,44.5c1.75,1.38,4.51,2.19,6.88,1.88c10.24-1.38,17.24-2.88,24.24-4.26c3.01-0.59,7.12-1,9.38-0.88","M31,17.62c1.38,1.26,1.88,3.38,1.88,6.13c0,2.75-0.88,44-0.88,47.25c0,9.75,4,14.62,13.75,14.62c6,0,16.38,0.12,21.38,0c5-0.12,9.5-0.62,13.5-1.5","M83,32.88c-9.62,0-9.25-14.25,0-14.25c9.76-0.01,9.5,14.25,0,14.25"],
+  "フ": ["M24.5,30c1.88,1.88,3.5,2.04,6.5,1.62c14.5-2,29-4.38,43.75-6.88c6.82-1.16,10.58,2.29,6.88,9.12c-10.38,19.14-21.25,39.52-50.01,53.64"],
+  "ブ": ["M24.5,30c1.88,1.88,3.5,2.04,6.5,1.62c14.5-2,29-4.38,43.75-6.88c6.82-1.16,10.58,2.29,6.88,9.12c-10.38,19.14-21.25,39.52-50.01,53.64","M86,15.63c2.61,1.93,5.7,5.93,7.36,9.37","M92.06,10.5c2.82,1.78,6.15,5.48,7.94,8.66"],
+  "プ": ["M24.5,30c1.88,1.88,3.5,2.04,6.5,1.62c14.5-2,29-4.38,43.75-6.88c6.82-1.16,10.58,2.29,6.88,9.12c-10.38,19.14-21.25,39.52-50.01,53.64","M92.62,23.88c-9.62,0-9.25-14.25,0-14.25c9.76-0.01,9.5,14.25,0,14.25"],
+  "ヘ": ["M15.5,49.02c2.78,1.55,5.39,0.64,6.95-0.9c4.05-4.01,9.47-8.3,12-10.88c3.16-3.23,7.32-5.26,12.01-1.16c11.25,9.82,25.03,21.45,35.78,30.36c4.28,3.55,7.71,6.85,11.25,9.56"],
+  "ベ": ["M15.5,49c2.75,1.5,5.33,0.62,6.88-0.88c4-3.88,9.38-8.5,11.88-11c3.12-3.12,7.23-5.08,11.87-1.12c11.13,9.5,26.25,22.5,36.87,31.12c4.23,3.43,7.62,6.62,11.12,9.25","M66.88,27c2.75,1.75,6,5.38,7.75,8.5","M73.26,22.12c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ペ": ["M15.5,49.25c2.75,1.5,5.33,0.62,6.88-0.88c4-3.88,9.12-8.75,11.62-11.25c3.12-3.12,7.23-5.08,11.87-1.12c11.13,9.5,26.25,22,36.87,30.62c4.23,3.43,7.62,6.62,11.12,9.25","M72.74,36.12c-9.62,0-9.25-14.25,0-14.25c9.76,0.01,9.5,14.25,0,14.25"],
+  "ホ": ["M22.63,40.38c2.62,1,4.75,1.71,9.12,1.25c17.75-1.88,29.25-2.75,45.38-3.88c3.74-0.26,7.38-0.12,11.12,0.62","M53.75,17.12c1.38,1.88,1.38,4.5,1.38,7.38c0,2.88-0.12,46.62-0.12,51.88c0,23.12-6.25,11.25-9.75,9.62","M27.38,59.38c0.5,9.25-1.38,16.62-6.38,21.88","M73.25,52.75c10.88,9.63,15.5,17.63,16.63,24.87"],
+  "ボ": ["M22.63,40.38c2.62,1,4.75,1.71,9.12,1.25c17.75-1.88,29.25-2.75,45.38-3.88c3.74-0.26,7.38-0.12,11.12,0.62","M53.75,17.12c1.38,1.88,1.38,4.5,1.38,7.38c0,2.88-0.12,46.62-0.12,51.88c0,23.12-6.25,11.25-9.75,9.62","M27.38,59.38c0.5,9.25-1.38,16.62-6.38,21.88","M73.51,53c10.87,9.62,15.5,17.62,16.62,24.88","M72.63,17.5c2.75,1.75,6,5.38,7.75,8.5","M79.01,12.62c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ポ": ["M22.63,40.38c2.62,1,4.75,1.71,9.12,1.25c17.75-1.88,29.25-2.75,45.38-3.88c3.74-0.26,7.38-0.12,11.12,0.62","M53.75,17.12c1.38,1.88,1.38,4.5,1.38,7.38c0,2.88-0.12,46.62-0.12,51.88c0,23.12-6.25,11.25-9.75,9.62","M27.38,59.38c0.5,9.25-1.38,16.62-6.38,21.88","M73.51,53c10.87,9.62,15.5,17.62,16.62,24.88","M79.75,25.62c-9.62,0-9.25-14.25,0-14.25c9.76,0.01,9.5,14.25,0,14.25"],
+  "マ": ["M21.5,33.75c1.88,1.88,3.5,1.99,6.5,1.62c19.62-2.38,33.5-4,51.25-6.38c6.85-0.92,9.37,1.67,4.38,7.62c-7.12,8.5-17.88,20-28.75,31.62","M43.38,58.88c8.43,6.5,16.6,15.93,20.25,26.25"],
+  "ミ": ["M41.87,20c10.4,2.57,20.5,6.3,25,10.38","M42,46.88c10.72,2.69,21.11,6.6,25.75,10.88","M36.5,75c15.71,4.49,30.95,11,37.75,18.12"],
+  "ム": ["M53.84,22.5c0.88,1.75,0.78,4.57-0.38,6.88c-9.25,18.38-16.19,30.96-25.25,45.75c-3.75,6.12-3,8.38,4.38,7.12c7.38-1.26,46.62-8.12,49.62-8.88","M72.21,60.12c6.88,6.38,13.62,14.88,16,25.38"],
+  "メ": ["M73.38,19.12c0.88,1.75,0.48,4.44-0.38,6.88c-7.75,22.12-21.75,47.62-45,62.88","M39.51,39.5c16.54,7.76,32.12,18,38.5,30.88"],
+  "モ": ["M27.88,26.19c2.5,1.19,4.33,1.6,7.45,1.35c11.55-0.91,21.93-2.16,32.79-3.93c2.62-0.42,6.27-0.41,8.39-0.17","M17.5,54.38c2.62,1,4.78,1.45,9.12,0.75c20.26-3.25,33.88-5.38,51.64-6.13c3.75-0.16,7.38,0.25,11.12,0.88","M48.76,29.88c1.12,1.62,1.42,3.62,1.42,6.12c0,6.53-0.65,33.56-0.65,35.88c0,7.67,3.09,11.08,10.53,11.76c5.33,0.49,12.31,0.24,16.37,0c4.46-0.26,6.52-0.74,9.59-1.43"],
+  "ャ": ["M25,56.25c1.67,1.28,4.84,1.85,7.96,1.08c14.85-3.64,26.27-6.16,38.45-9.34c17.31-4.52,1.18,11.21-2.16,15.73","M41.1,35.5c1.3,1.1,2,2.1,2.5,4.1c0.5,2,9.4,41.62,9.9,43.72c0.5,2.1,1.7,7.2,2.4,9.8"],
+  "ヤ": ["M18,45.75c2.12,1.62,6.15,2.35,10.12,1.38c18.88-4.62,33.39-7.83,48.88-11.88c22-5.75,1.5,14.25-2.75,20","M38.47,19.38c1.65,1.4,2.54,2.67,3.18,5.21c0.64,2.54,11.95,52.9,12.59,55.57c0.64,2.67,2.16,9.16,3.05,12.46"],
+  "ュ": ["M34.8,52.84c1.91,1.21,4.13,1.67,7.44,1.21c10.65-1.51,13.99-1.68,21.71-2.97c5.43-0.9,6.26,0.13,5.23,5.12c-1.91,9.25-3.92,19.45-5.23,27.49","M24.5,86.21c2.21,1.21,3.84,1.73,7.34,1.21c18.54-2.79,28.95-3.12,43.52-3.12c3.02,0,5.93,0.4,8.95,0.9"],
+  "ユ": ["M29.5,35.38c2.38,1.5,5.14,2.08,9.25,1.5c13.25-1.88,18.02-2.4,27.62-4c6.75-1.12,7.78,0.16,6.5,6.38c-2.38,11.5-4.88,24.5-6.5,34.5","M17,76.88c2.75,1.5,4.76,2.05,9.12,1.5c22.62-2.88,36-3.88,54.12-3.88c3.75,0,7.38,0.5,11.12,1.12"],
+  "ョ": ["M33.5,50.62c1.9,1.21,4.09,1.6,7.39,1.21c11.19-1.32,21.35-2.46,29.07-3.44c4.79-0.61,5.49,0.4,5.2,5.16c-0.79,12.56-1.5,24.79-2.4,34.21","M33.6,69.04c1.9,1.21,4.09,1.6,7.39,1.21c8.39-0.99,18.23-1.85,24.86-2.47c2.21-0.2,4.21,0.04,6.21,0.44","M29,90.06c2.2,1.05,3.79,1.36,7.29,1.05c9.99-0.88,23.47-2.35,33.07-2.35c2.7,0,4.49,0,7.49,0.44"],
+  "ヨ": ["M29.13,30.12c2.38,1.5,5.12,1.98,9.25,1.5c14-1.62,26.71-3.04,36.38-4.25c6-0.75,6.88,0.5,6.5,6.38c-1,15.51-1.89,30.63-3.01,42.25","M29.25,52.88c2.38,1.5,5.12,1.98,9.25,1.5c10.5-1.22,22.81-2.29,31.11-3.04c2.77-0.25,5.27,0.04,7.77,0.54","M23.5,78.84c2.75,1.3,4.74,1.68,9.12,1.3c12.5-1.08,29.37-2.9,41.38-2.9c3.38,0,5.62,0,9.38,0.54"],
+  "ラ": ["M38.63,21.06c2.07,1.86,4.43,2.53,8.05,2.15c9.2-0.96,14.34-2.01,21.57-2.95c2.41-0.31,4.13-0.53,6.51-0.19","M26,41.89c2.38,1.7,5.12,2.24,9.25,1.7c14-1.84,31.21-4.95,40.88-6.32c6-0.85,8.14,0.62,6.25,5.72c-6.88,18.62-22,38.25-45.25,48.62"],
+  "リ": ["M35,18.38c1.12,1.5,1.62,3,1.62,4.88c0,1.88,0,25,0,27c0,2,0,6.12,0,7.75","M71,15.38c1.5,1.25,2.38,3.12,2.38,5.38c0,2.26-0.12,28.88-0.12,32.88c0,19.62-9.5,32.25-21.75,40.38"],
+  "ル": ["M34.38,31.88c1.12,1.5,1.72,3,1.62,4.88c-1.12,22.88-8.88,40.62-17.5,49.5","M56.51,19.62c1.5,1.25,2.38,3.12,2.38,5.38c0,2.26-0.12,47.62-0.12,51.62c0,10.5,0.52,10.21,9.38,2.75c9.5-8,16.5-14.62,26.38-25.62"],
+  "レ": ["M34.5,19.75c1.5,1.25,2.38,3.12,2.38,5.38c0,2.26-0.12,50.12-0.12,54.12c-0.02,8.75-0.14,8.63,9.36,3.75c13.23-6.79,33.38-22.5,43.25-33.5"],
+  "ロ": ["M25,33.25c1.5,1.25,2.16,3.14,2.38,5.38c0.96,10.07,2.14,23.67,3.14,34.88c0.31,3.4,0.59,6.58,0.86,9.38","M28.13,36.12c9.25-1,37.62-3.12,45.62-4.25c8-1.13,9.57,0.53,8.38,6.62c-2.13,10.89-4.13,21.89-6.75,34.89","M32,78.12c5.38-0.5,33.62-3,36.5-3c2.88,0,7.88-0.25,11.5,0.25"],
+  "ヮ": ["M28.5,42.89c1.2,1,1.73,2.51,1.9,4.3c0.77,8.05,0.71,6.53,1.51,15.49c0.25,2.72,0.47,5.26,0.69,7.5","M30.7,45.1c2.49,0.3,4.12,0.18,6.58-0.05c11.01-1.03,21.7-1.85,33.29-2.96c6.43-0.61,7.55,0.41,6.7,5.29c-3.8,21.79-16.5,38.08-35.07,49.16"],
+  "ワ": ["M25,23.62c1.5,1.25,2.16,3.14,2.38,5.38c0.96,10.07,0.89,8.17,1.89,19.38c0.31,3.4,0.59,6.58,0.86,9.38","M27.75,26.38c3.12,0.38,5.16,0.22,8.23-0.06c13.77-1.29,27.15-2.32,41.65-3.7c8.04-0.76,9.44,0.51,8.38,6.62c-4.76,27.26-20.64,47.64-43.88,61.51"],
+  "ヰ": ["M28.12,35c3,1.25,5.87,1.17,8.75,0.88c14.88-1.5,25.25-2.5,40.25-4c3.73-0.37,6.88,0,8.88,0.38","M38.62,38.88c1,1.38,1.22,2.75,1.12,4.38c-0.5,8.25-1.12,15.12-1.5,20","M18,65.25c2.5,0.88,5.25,1.03,8.62,0.5c23-3.62,38.88-5.12,57.25-5.5c4.76-0.1,8.75,0.5,12,1.62","M60.12,14.38c2,1.62,2.75,3.5,2.75,6.12c0,2.62,0,56,0,59.38c0,3.38,0,10.62,0,13.88"],
+  "ヱ": ["M30.87,28.32c2.62,2.18,5.86,2.38,8.75,1.98c12.12-1.68,19.01-2.14,31.75-3.93c3.73-0.52,6.93,2.16,3,6c-5.75,5.63-14.63,13.63-16.63,15.25","M52.83,47.12c1.08,1.48,1.3,2.96,1.21,4.71c-0.54,11.29-0.67,15.08-0.81,21.54","M16,76.23c2.54,1.09,5.3,1.98,8.75,1.55c21.5-2.66,36.66-3.44,56.57-3.59c4.83-0.04,8.88,0.62,12.18,2.02"],
+  "ヲ": ["M30.24,25.14c2.38,1.7,5.11,2.13,9.25,1.7c12.32-1.29,21.94-2.6,30.48-3.64c2.81-0.34,5.51-0.65,8.14-0.93","M29,46.69c2.25,1.44,4.44,1.9,8.05,1.4c8.19-1.15,19.93-2.64,28.56-3.79c2.38-0.31,4.65-0.62,6.75-0.92","M78,22.88c0.88,2,0.62,4.64,0.12,7c-4.88,22.5-23.5,47.12-44.12,60.74"],
+  "ン": ["M26.5,24.88c5.76,2.15,12.68,8.47,15.75,14.25","M28.62,83.75c2.5,1.62,5.12,0.96,7.75-0.62c20.13-12.13,35-24.63,49.63-41.13"],
+  "ヴ": ["M53.25,14.62c1,1.12,1.25,3,1.25,4.62c0,1.62,0,10.76,0,12.64","M26.5,31.25c1,1.12,1.22,3,1.25,4.62c0.09,4.45,0.29,10.95,0.45,16.37c0.07,2.5,0.14,4.77,0.18,6.5","M29.12,35.88c19.38-2.25,40.25-4.25,49-5.5c8.75-1.25,8.28,0.84,6.25,6.88c-5,14.88-20.12,43.5-41,56.62","M85.12,16.5c2.75,1.75,6,5.38,7.75,8.5","M91.5,11.62c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ヵ": ["M33.27,53.74c1.54,1.03,3.72,1.54,5.87,1.23c14.73-2.06,25.51-3.22,33.51-4.34c5.87-0.82,8.73,0.45,7.11,6.74c-1.75,6.8-3.69,14.67-7.62,24c-8.65,20.49-11.14,10.45-15.36,8.28","M57.16,35.12c0.73,1.34,1.08,3.15,0.63,5.56c-3.55,18.85-13.27,37.28-25.29,48.5"],
+  "ヶ": ["M43.63,36.96c0.35,1.53,0.32,3.55-0.47,5.22c-3.88,8.28-7.4,15.8-15.16,24.59","M41.15,52.82c1.71,0.7,3.34,0.83,5.32,0.4c10.14-2.21,20.48-3.92,28.71-5.22c2.9-0.46,5.02-0.6,7.43-0.4","M62.5,53.83c0.35,1.53,0.4,3.43-0.07,5.22c-2.91,11.04-7.43,25.1-19.78,35.24"],
+  "ヷ": ["M21.5,24.12c1.5,1.25,2.16,3.14,2.38,5.38c0.96,10.07,0.89,8.17,1.89,19.38c0.31,3.4,0.59,6.58,0.86,9.38","M24.25,26.88c3.12,0.38,5.16,0.22,8.23-0.06c13.76-1.28,27.14-2.31,41.64-3.69c8.04-0.76,9.44,0.51,8.38,6.62c-4.75,27.25-20.62,47.63-43.88,61.5","M85.5,12.38c2.61,1.93,5.7,5.93,7.36,9.37","M91.56,7.25c2.82,1.78,6.15,5.48,7.94,8.66"],
+  "ヸ": ["M28.12,35c3,1.25,5.87,1.17,8.75,0.88c14.88-1.5,25.25-2.5,40.25-4c3.73-0.37,6.88,0,8.88,0.38","M38.62,38.88c1,1.38,1.22,2.75,1.12,4.38c-0.5,8.25-1.12,15.12-1.5,20","M18,65.25c2.5,0.88,5.25,1.03,8.62,0.5c23-3.62,38.88-5.12,57.25-5.5c4.76-0.1,8.75,0.5,12,1.62","M60.12,14.38c2,1.62,2.75,3.5,2.75,6.12c0,2.62,0,56,0,59.38c0,3.38,0,10.62,0,13.88","M84.24,13.25c2.75,1.75,6,5.38,7.75,8.5","M90.62,8.38c3.06,1.57,6.68,4.82,8.62,7.62"],
+  "ヹ": ["M30.87,28.32c2.62,2.18,5.86,2.38,8.75,1.98c12.12-1.68,19.01-2.14,31.75-3.93c3.73-0.52,6.93,2.16,3,6c-5.75,5.63-14.63,13.63-16.63,15.25","M52.83,47.12c1.08,1.48,1.3,2.96,1.21,4.71c-0.54,11.29-0.67,15.08-0.81,21.54","M16,76.23c2.54,1.09,5.3,1.98,8.75,1.55c21.5-2.66,36.66-3.44,56.57-3.59c4.83-0.04,8.88,0.62,12.18,2.02","M81.62,16.88c2.61,1.93,5.7,5.93,7.36,9.37","M87.68,11.75c2.82,1.78,6.15,5.48,7.94,8.66"],
+  "ヺ": ["M30.24,25.14c2.38,1.7,5.11,2.13,9.25,1.7c12.32-1.29,21.94-2.6,30.48-3.64c2.81-0.34,5.51-0.65,8.14-0.93","M29,46.69c2.25,1.44,4.44,1.9,8.05,1.4c8.19-1.15,19.93-2.64,28.56-3.79c2.38-0.31,4.65-0.62,6.75-0.92","M78,22.88c0.88,2,0.62,4.64,0.12,7c-4.88,22.5-23.5,47.12-44.12,60.74","M83.62,12.88c2.61,1.93,5.7,5.93,7.36,9.37","M89.68,7.75c2.82,1.78,6.15,5.48,7.94,8.66"],
+  "ー": ["M14.5,53c5.75-0.75,11.62-0.95,14.5-1c21.62-0.38,40.75-1.62,45.38-1.62c4.63,0,16.75-0.62,20.12-0.62"]
+};
+
+</script>
+<script>
+'use strict';
+
+/* =========================================================
+   すらすら ひらがな — Phase 0
+   目的: 「お手本より先に声を出せたか」をVADで判定できるか検証する
+   ・音声認識(ASR)は使わない。何と言ったかは判定しない。
+   ・お手本再生中は検出を止める(スピーカー→マイクの回り込み対策)
+   ========================================================= */
+
+const KANA = [
+  'あ','い','う','え','お','か','き','く','け','こ',
+  'さ','し','す','せ','そ','た','ち','つ','て','と',
+  'な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ',
+  'ま','み','む','め','も','や','ゆ','よ',
+  'ら','り','る','れ','ろ','わ','を','ん'
+];
+
+// 音声合成が単体だと読み違える字の読みを差し替える
+const READ_AS = { 'を':'お', 'は':'は', 'へ':'へ' };
+
+/* T式ひらがな音読支援は「解読(1文字) → 語彙(単語)」の二段階。
+   その第2段階にあたる、まとまりとして読むための単語 */
+const WORDS = [
+  'あめ','いぬ','うし','えき','おに',
+  'かに','きつね','くま','けむし','こま',
+  'さる','しお','すいか','せみ','そら',
+  'たこ','ちず','つくえ','てがみ','とけい',
+  'なす','にわとり','ぬの','ねこ','のり',
+  'はさみ','ひこうき','ふね','へや','ほし',
+  'まど','みかん','むし','めがね','もり',
+  'やま','ゆき','よる','らくだ','りす',
+  'れんげ','ろうそく','わに',
+];
+
+const LS_KEY = 'dyslexia-p0-weights-v1';
+
+const S = {
+  wait: 2000,      // お手本までの待ち時間(ms)
+  sensDb: 11,      // 環境ノイズから何dB上を発声とみなすか
+  total: 30,       // 出題数
+  useMic: true,
+  weights: {},     // 文字・ことば -> 出題重み
+  trials: [],      // 記録
+  i: 0,
+  running: false,
+  set: 'moji',     // もじ(1文字) / ことば(単語)
+  items: [],       // いま出題している一覧
+};
+
+/* ---------- 画面切替 ---------- */
+const $ = id => document.getElementById(id);
+function show(name){
+  ['home','readhome','play','result','pickchar','write',
+   'mikake','haku','battlepick','battle']
+    .forEach(n => $(n).classList.toggle('on', n === name));
+  window.scrollTo(0,0);
+}
+
+/* ---------- 重み(間隔反復) ---------- */
+function loadWeights(){
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ saved = {}; }
+  S.weights = {};
+  KANA.concat(WORDS).forEach(k => {
+    S.weights[k] = (typeof saved[k] === 'number' && saved[k] > 0) ? saved[k] : 1;
+  });
+  if (!S.items.length) S.items = KANA;
+}
+function saveWeights(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(S.weights)); } catch(e){}
+}
+function pickKana(prev){
+  const pool = S.items.filter(k => k !== prev);
+  let sum = 0;
+  for (const k of pool) sum += S.weights[k];
+  let r = Math.random() * sum;
+  for (const k of pool){ r -= S.weights[k]; if (r <= 0) return k; }
+  return pool[pool.length - 1];
+}
+function updateWeight(k, grade){
+  const w = S.weights[k];
+  if (grade === 'early')      S.weights[k] = Math.max(0.08, w * 0.5);
+  else if (grade === 'late')  S.weights[k] = Math.max(0.20, w * 0.85);
+  else                        S.weights[k] = Math.min(3.0,  w * 1.5);
+}
+
+/* ---------- 音声合成(お手本) ---------- */
+let jaVoice = null;
+function pickVoice(){
+  const vs = speechSynthesis.getVoices() || [];
+  jaVoice = vs.find(v => /ja[-_]?JP/i.test(v.lang)) || vs.find(v => /^ja/i.test(v.lang)) || null;
+}
+if ('speechSynthesis' in window){
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+}
+function speak(text){
+  return new Promise(resolve => {
+    if (!('speechSynthesis' in window)) { setTimeout(resolve, 400); return; }
+    try { speechSynthesis.cancel(); } catch(e){}
+    const u = new SpeechSynthesisUtterance(READ_AS[text] || text);
+    u.lang = 'ja-JP';
+    if (jaVoice) u.voice = jaVoice;
+    u.rate = 0.85;
+    u.pitch = 1.05;
+    let done = false;
+    const fin = () => { if (!done){ done = true; resolve(); } };
+    u.onend = fin;
+    u.onerror = fin;
+    setTimeout(fin, 2500);              // 保険(onendが来ない環境がある)
+    speechSynthesis.speak(u);
+  });
+}
+
+/* ---------- マイク / VAD ---------- */
+const mic = {
+  ctx:null, analyser:null, stream:null, buf:null,
+  binLo:0, binHi:0,
+  noiseDb:-70,          // キャリブレーションで得た環境ノイズ
+  level:0,              // 直近の音量(dB)
+  listening:false,      // 検出を有効にするか
+  onOnset:null,         // 発声開始時のコールバック
+  run:0,                // 連続でしきい値を超えたフレーム数
+  peak:-100,            // 現在の試行中のピーク
+  rafId:0,
+};
+
+async function micStart(){
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation:false,   // 生の信号がほしい
+      noiseSuppression:false,   // 小さい声を消されると困る
+      autoGainControl:false     // AGCが効くとしきい値が意味を失う
+    }
+  });
+  mic.stream = stream;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  mic.ctx = new Ctx();
+  if (mic.ctx.state === 'suspended') await mic.ctx.resume();
+  const src = mic.ctx.createMediaStreamSource(stream);
+  const an = mic.ctx.createAnalyser();
+  an.fftSize = 1024;
+  an.smoothingTimeConstant = 0.1;
+  src.connect(an);
+  mic.analyser = an;
+  mic.buf = new Float32Array(an.frequencyBinCount);
+
+  // 200Hz〜4000Hz の帯域だけを見る(空調の低い唸り・高域ノイズを除く)
+  const nyq = mic.ctx.sampleRate / 2;
+  const perBin = nyq / an.frequencyBinCount;
+  mic.binLo = Math.max(1, Math.floor(200 / perBin));
+  mic.binHi = Math.min(an.frequencyBinCount - 1, Math.ceil(4000 / perBin));
+
+  loop();
+}
+function bandDb(){
+  const an = mic.analyser;
+  if (!an) return -100;
+  an.getFloatFrequencyData(mic.buf);   // dB値の配列
+  let sum = 0, n = 0;
+  for (let i = mic.binLo; i <= mic.binHi; i++){
+    const v = mic.buf[i];
+    if (isFinite(v)) { sum += v; n++; }
+  }
+  return n ? sum / n : -100;
+}
+function loop(){
+  mic.rafId = requestAnimationFrame(loop);
+  const db = bandDb();
+  mic.level = db;
+  const th = mic.noiseDb + S.sensDb;
+
+  // メーター表示(ノイズ床〜+30dB を 0〜100% に写す)
+  const pct = Math.max(0, Math.min(100, ((db - mic.noiseDb) / 30) * 100));
+  const bar = $('meter').firstElementChild;
+  bar.style.width = pct.toFixed(0) + '%';
+  $('meter').classList.toggle('hot', db > th);
+
+  if (!mic.listening) { mic.run = 0; return; }
+  if (db > mic.peak) mic.peak = db;
+
+  if (db > th){
+    mic.run++;
+    if (mic.run >= 3 && mic.onOnset){   // 3フレーム連続 ≒ 50ms 続いたら発声とみなす
+      const cb = mic.onOnset;
+      mic.onOnset = null;
+      mic.listening = false;
+      mic.run = 0;
+      cb();
+    }
+  } else {
+    mic.run = 0;
+  }
+}
+async function calibrate(ms){
+  mic.listening = false;
+  const t0 = performance.now();
+  const vals = [];
+  return new Promise(resolve => {
+    const tick = () => {
+      vals.push(bandDb());
+      if (performance.now() - t0 < ms) requestAnimationFrame(tick);
+      else {
+        vals.sort((a,b) => a-b);
+        const med = vals[Math.floor(vals.length * 0.5)];   // 中央値(突発音に強い)
+        mic.noiseDb = isFinite(med) ? med : -70;
+        resolve(mic.noiseDb);
+      }
+    };
+    tick();
+  });
+}
+function micStop(){
+  if (mic.rafId) cancelAnimationFrame(mic.rafId);
+  mic.rafId = 0;
+  if (mic.stream) mic.stream.getTracks().forEach(t => t.stop());
+  mic.stream = null;
+  if (mic.ctx) { try { mic.ctx.close(); } catch(e){} }
+  mic.ctx = null; mic.analyser = null;
+}
+
+/* マイクなしモード: スペース/画面タップを発声とみなす */
+let keyOnset = null;
+function armKey(cb){ keyOnset = cb; }
+function fireKey(){
+  if (keyOnset){ const cb = keyOnset; keyOnset = null; cb(); }
+}
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && (S.running || B.running) && !S.useMic){ e.preventDefault(); fireKey(); }
+});
+$('play').addEventListener('pointerdown', () => { if (S.running && !S.useMic) fireKey(); });
+
+/* ---------- セッション ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function armListen(cb){
+  if (S.useMic){ mic.run = 0; mic.onOnset = cb; mic.listening = true; }
+  else armKey(cb);
+}
+function disarm(){
+  mic.listening = false; mic.onOnset = null; keyOnset = null;
+}
+
+async function startSession(useMic){
+  S.useMic = useMic;
+  S.total  = +$('s-n').value;
+  S.wait   = +$('s-wait').value;
+  S.sensDb = +$('s-sens').value;
+  S.trials = [];
+  S.i = 0;
+  S.items = S.set === 'kotoba' ? WORDS : KANA;
+  loadWeights();
+
+  show('play');
+  $('dots').innerHTML = '';
+  $('glyph').textContent = '';
+  $('micnote').textContent = '';
+
+  if (useMic){
+    $('fb').className = 'fb none';
+    $('fb').textContent = 'しずかにしててね…';
+    try {
+      await micStart();
+    } catch(e){
+      $('fb').textContent = 'マイクが つかえません';
+      $('micnote').textContent = 'エラー: ' + (e && e.name ? e.name : e) +
+        ' ／ 「マイクなしで試す」でも検証できます。';
+      return;
+    }
+    const n = await calibrate(1500);
+    $('micnote').textContent =
+      'ノイズ床 ' + n.toFixed(1) + 'dB ／ しきい値 ' + (n + S.sensDb).toFixed(1) + 'dB';
+  } else {
+    $('micnote').textContent = 'マイクなしモード: 声のかわりに スペースキー か 画面タップ';
+  }
+
+  $('fb').className = 'fb';
+  $('fb').textContent = 'いくよ';
+  await sleep(900);
+
+  S.running = true;
+  await runTrials();
+}
+
+async function runTrials(){
+  let prev = null;
+  while (S.running && S.i < S.total){
+    const k = pickKana(prev);
+    prev = k;
+    await oneTrial(k);
+    S.i++;
+  }
+  finish();
+}
+
+async function oneTrial(k){
+  const fb = $('fb');
+  fb.className = 'fb none';
+  fb.textContent = '';
+  $('glyph').textContent = '';
+  await sleep(320);                       // 空白を挟んで「出た瞬間」を作る
+
+  mic.peak = -100;
+  $('glyph').textContent = k;
+  $('glyph').classList.toggle('word', k.length > 1);   // ことばは小さめに出す
+  const t0 = performance.now();
+
+  let onsetMs = null, phase = null;
+
+  // --- 区間A: 文字が出てから、お手本が鳴るまで ---
+  const a = new Promise(resolve => {
+    let settled = false;
+    armListen(() => { if (!settled){ settled = true; onsetMs = performance.now() - t0; phase = 'A'; resolve(); } });
+    setTimeout(() => { if (!settled){ settled = true; disarm(); resolve(); } }, S.wait);
+  });
+  await a;
+
+  if (phase === 'A'){
+    fb.className = 'fb';
+    fb.textContent = 'はやい！';
+  }
+
+  // --- お手本を鳴らす(この間は検出を止める) ---
+  disarm();
+  await speak(k);
+  await sleep(120);                        // 残響が収まるのを待つ
+
+  // --- 区間B: お手本のあと ---
+  if (phase !== 'A'){
+    const b = new Promise(resolve => {
+      let settled = false;
+      const tB = performance.now();
+      armListen(() => { if (!settled){ settled = true; onsetMs = performance.now() - tB; phase = 'B'; resolve(); } });
+      setTimeout(() => { if (!settled){ settled = true; disarm(); resolve(); } }, 2000);
+    });
+    await b;
+    disarm();
+    if (phase === 'B'){ fb.className = 'fb soft'; fb.textContent = 'よめたね'; }
+    else               { fb.className = 'fb none'; fb.textContent = 'つぎ いこう'; }
+  }
+
+  const grade = phase === 'A' ? 'early' : phase === 'B' ? 'late' : 'none';
+  updateWeight(k, grade);
+  S.trials.push({
+    n: S.trials.length + 1, k, grade, phase: phase || '-',
+    ms: onsetMs === null ? null : Math.round(onsetMs),
+    peak: mic.peak > -100 ? +(mic.peak - mic.noiseDb).toFixed(1) : null
+  });
+
+  const d = document.createElement('i');
+  d.className = grade === 'early' ? 'g' : grade === 'late' ? 's' : 'n';
+  $('dots').appendChild(d);
+
+  await sleep(520);
+}
+
+function finish(){
+  S.running = false;
+  disarm();
+  micStop();
+  saveWeights();
+  render();
+  show('result');
+}
+
+/* ---------- 結果 ---------- */
+function render(){
+  const t = S.trials;
+  const early = t.filter(x => x.grade === 'early');
+  const late  = t.filter(x => x.grade === 'late');
+  const none  = t.filter(x => x.grade === 'none');
+  const avg = early.length
+    ? Math.round(early.reduce((s,x) => s + x.ms, 0) / early.length)
+    : null;
+
+  $('r-head').textContent =
+    'はやい ' + early.length + ' ／ よめた ' + late.length + ' ／ とばした ' + none.length;
+  $('r-sub').textContent =
+    (avg !== null ? 'お手本より先に読めたときの反応時間の平均: ' + avg + 'ms。' : '') +
+    ' 検出できなかった回が多い場合は、感度の数字を小さくして試してください。';
+
+  const tb = $('r-table').querySelector('tbody');
+  tb.innerHTML = '';
+  const label = { early:'はやい', late:'あと', none:'なし' };
+  t.forEach(x => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + x.n + '</td><td>' + x.k + '</td><td>' + label[x.grade] + '</td>' +
+      '<td>' + (x.ms === null ? '-' : x.ms) + '</td>' +
+      '<td>' + x.phase + '</td>' +
+      '<td>' + (x.peak === null ? '-' : '+' + x.peak) + '</td>';
+    tb.appendChild(tr);
+  });
+
+  const head = 'n,kana,grade,onset_ms,phase,peak_over_noise_db';
+  const rows = t.map(x => [x.n, x.k, x.grade, x.ms === null ? '' : x.ms, x.phase,
+                           x.peak === null ? '' : x.peak].join(','));
+  $('r-csv').value =
+    '# wait=' + S.wait + 'ms sens=' + S.sensDb + 'dB noise=' + mic.noiseDb.toFixed(1) +
+    'dB mic=' + S.useMic + '\n' + head + '\n' + rows.join('\n');
+}
+
+/* ---------- 設定UI ---------- */
+function bindRange(id, out, fmt){
+  const el = $(id);
+  const paint = () => { $(out).textContent = fmt(+el.value); };
+  el.addEventListener('input', paint);
+  paint();
+}
+bindRange('s-wait','v-wait', v => (v/1000).toFixed(1) + '秒');
+bindRange('s-sens','v-sens', v => String(v));
+bindRange('s-n','v-n',       v => v + '問');
+
+$('btn-start').onclick = () => startSession(true);
+$('btn-nomic').onclick = () => startSession(false);
+$('btn-quit').onclick  = () => { if (S.trials.length){ finish(); } else { S.running=false; disarm(); micStop(); show('home'); } };
+$('btn-again').onclick = () => startSession(S.useMic);
+$('btn-home').onclick  = () => show('home');
+$('btn-copy').onclick  = async () => {
+  const ta = $('r-csv');
+  try { await navigator.clipboard.writeText(ta.value); $('btn-copy').textContent = 'コピーしました'; }
+  catch(e){ ta.select(); document.execCommand('copy'); $('btn-copy').textContent = 'コピーしました'; }
+  setTimeout(() => { $('btn-copy').textContent = 'コピー'; }, 1600);
+};
+$('btn-reset').onclick = () => {
+  try { localStorage.removeItem(LS_KEY); } catch(e){}
+  loadWeights();
+  $('btn-reset').textContent = 'けしました';
+  setTimeout(() => { $('btn-reset').textContent = 'おぼえた記録をけす'; }, 1600);
+};
+
+loadWeights();
+
+
+/* =========================================================
+   かくモード — 書き順
+   ・「みる → なぞる → じぶんで」の3段階
+   ・判定は書き順だけ。形は大きくずれていなければ通す
+   ・×は出さない。ちがうときは正しい画を光らせて やりなおし
+   ========================================================= */
+
+const LS_WRITE = 'dyslexia-p0-write-v1';
+const SVGNS = 'http://www.w3.org/2000/svg';
+const NUMWORD = ['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう','じゅう'];
+
+const toKata = s => String.fromCodePoint(s.codePointAt(0) + 0x60);
+const HIRA_BASE  = KANA;                       // よむモードと同じ清音46字
+const KATA_BASE  = HIRA_BASE.map(toKata);
+const HIRA_EXTRA = [...'がぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽぁぃぅぇぉっゃゅょ'];
+const KATA_EXTRA = HIRA_EXTRA.map(toKata).concat('ー');
+
+/** その字が ひらがな か カタカナ か */
+function kanaKind(c){
+  const n = c ? c.codePointAt(0) : 0;
+  return (n >= 0x30A1 && n <= 0x30FF) ? 'カタカナ' : 'ひらがな';
+}
+function kindChip(c){
+  const k = kanaKind(c);
+  return '<span class="kindchip ' + (k === 'カタカナ' ? 'kata' : 'hira') + '">' + k + '</span>';
+}
+/** 「ひらがなの」… 一拍おいて …「あ」と読み上げる。
+    書かせたい字が前の言葉に埋もれないよう、必ず間をあける。
+    alive: 途中で画面を離れたときに続きを言わないための確認 */
+async function sayKana(c, alive){
+  await speak(kanaKind(c) + 'の');
+  await sleep(600);
+  if (alive && !alive()) return;
+  return speak(READ_AS[c] || c);
+}
+
+// 判定のゆるさ(109×109の座標での距離)。大きいほど甘い
+const TH_END  = 26;   // 書き始め・書き終わりのずれ
+const TH_MEAN = 26;   // 線全体の平均のずれ
+const TH_COS  = 0.35; // 向きの一致(1.0で完全一致)
+const SHORT   = 14;   // これより短い画は「点」とみなして甘く見る
+
+const W = {
+  set:'hira', extra:false, list:[], char:'', strokes:[], refs:[],
+  step:'see', idx:0, drawing:false, pts:[], done:{}, timer:null,
+  onDone:null,     // 書けたときに呼ぶ(戦闘で使う)
+  miss:0,          // その字で何回まちがえたか
+  hintTimer:null,  // 「おてほんを みる」を消すためのタイマー
+};
+
+function el(tag, attrs){
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+}
+function dist(a, b){ return Math.hypot(a.x - b.x, a.y - b.y); }
+
+/* ---------- 書けた記録 ---------- */
+function loadDone(){
+  try { W.done = JSON.parse(localStorage.getItem(LS_WRITE) || '{}'); } catch(e){ W.done = {}; }
+}
+function saveDone(){
+  try { localStorage.setItem(LS_WRITE, JSON.stringify(W.done)); } catch(e){}
+}
+
+/* ---------- お手本の線を点の列にする ---------- */
+const probe = el('path', { style:'visibility:hidden' });
+
+function sampleRef(d, n){
+  probe.setAttribute('d', d);
+  const L = probe.getTotalLength();
+  const pts = [];
+  for (let i = 0; i < n; i++){
+    const p = probe.getPointAtLength(L * i / (n - 1));
+    pts.push({ x:p.x, y:p.y });
+  }
+  return { pts, len:L };
+}
+
+/** 手のふるえをならす(前後の点と平均する) */
+function smooth(pts){
+  if (pts.length < 3) return pts;
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++){
+    out.push({ x:(pts[i-1].x + pts[i].x + pts[i+1].x) / 3,
+               y:(pts[i-1].y + pts[i].y + pts[i+1].y) / 3 });
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+/** 手書きの点の列を、等間隔の n 点に直す */
+function resample(raw, n){
+  const src = smooth(smooth(raw));
+  if (src.length < 2) return null;
+  const seg = [];
+  let total = 0;
+  for (let i = 1; i < src.length; i++){
+    const d = dist(src[i-1], src[i]);
+    seg.push(d); total += d;
+  }
+  if (total < 3) return null;                 // ただのタップ。書いたとみなさない
+  const out = [src[0]];
+  const step = total / (n - 1);
+  let need = step, i = 1, acc = 0;
+  while (out.length < n - 1 && i < src.length){
+    const d = seg[i-1];
+    if (acc + d >= need){
+      const t = (need - acc) / d;
+      out.push({ x: src[i-1].x + (src[i].x - src[i-1].x) * t,
+                 y: src[i-1].y + (src[i].y - src[i-1].y) * t });
+      need += step;
+    } else { acc += d; i++; }
+  }
+  out.push(src[src.length - 1]);
+  return { pts: out, len: total };
+}
+
+/** その画として通るか。書き順を見るのが目的なので形はゆるく */
+function matches(usr, ref){
+  if (!usr) return false;
+  const a = usr.pts, b = ref.pts;
+  const aEnd = a[a.length-1], bEnd = b[b.length-1];
+
+  // 端から端までの直線距離。線の長さで測るとふるえの分だけ伸びてしまう
+  const refSpan = dist(b[0], bEnd);
+  const usrSpan = dist(a[0], aEnd);
+
+  // 濁点のような短い画は、書き始めの位置と大きさだけ見る
+  if (ref.len < SHORT) return dist(a[0], b[0]) < TH_END + 6 && usrSpan < ref.len + 26;
+
+  if (dist(a[0], b[0]) > TH_END) return false;                        // 書き始め
+  if (dist(aEnd, bEnd) > TH_END) return false;                        // 書き終わり
+
+  // 向きは、お手本がある程度まっすぐなときだけ見る
+  // (「の」のように丸い画は始点と終点が近く、向きが意味を持たない)
+  if (refSpan > 12 && usrSpan > 6){
+    const va = { x:aEnd.x - a[0].x, y:aEnd.y - a[0].y };
+    const vb = { x:bEnd.x - b[0].x, y:bEnd.y - b[0].y };
+    const cos = (va.x*vb.x + va.y*vb.y) / (usrSpan * refSpan);
+    if (cos < TH_COS) return false;
+  }
+
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += dist(a[i], b[i]);
+  return sum / a.length < TH_MEAN;
+}
+
+/* ---------- 文字えらび ---------- */
+/* 五十音表。左の列から書いているが、表示は direction:rtl で
+   右から左に並ぶ(＝あ行が右端)。空きは や行い段 など5か所 */
+const GOJUON = [
+  ['あ','か','さ','た','な','は','ま','や','ら','わ'],
+  ['い','き','し','ち','に','ひ','み','' ,'り','' ],
+  ['う','く','す','つ','ぬ','ふ','む','ゆ','る','' ],
+  ['え','け','せ','て','ね','へ','め','' ,'れ','' ],
+  ['お','こ','そ','と','の','ほ','も','よ','ろ','を'],
+];
+
+function charButton(c){
+  const b = document.createElement('button');
+  b.textContent = c;
+  if (W.done[c]) b.className = 'done';
+  b.onclick = () => openChar(c);
+  return b;
+}
+
+function buildGrid(){
+  const kata = W.set === 'kata';
+  const conv = c => (c && kata) ? toKata(c) : c;
+
+  const g = $('chargrid');
+  g.innerHTML = '';
+  const inTable = [];
+  GOJUON.forEach(row => row.forEach(c => {
+    const ch = conv(c);
+    if (!ch || !KANA_STROKES[ch]){
+      const blank = document.createElement('div');
+      blank.className = 'blank';
+      g.appendChild(blank);
+      return;
+    }
+    inTable.push(ch);
+    g.appendChild(charButton(ch));
+  }));
+  // 「ん」は表の外。左下(rtlなので最後)に置く
+  const n = conv('ん');
+  for (let i = 0; i < 9; i++) g.appendChild(Object.assign(document.createElement('div'), { className:'blank' }));
+  g.appendChild(charButton(n));
+  inTable.push(n);
+
+  // だくおん・小さい字
+  const ex = $('extragrid');
+  ex.innerHTML = '';
+  const extras = W.extra
+    ? (kata ? KATA_EXTRA : HIRA_EXTRA).filter(c => KANA_STROKES[c])
+    : [];
+  extras.forEach(c => ex.appendChild(charButton(c)));
+  $('extrawrap').style.display = W.extra ? '' : 'none';
+
+  // 「つぎの字」でめぐる順番は、あいうえお かきくけこ…(読む順)
+  const reading = [];
+  for (let col = 0; col < 10; col++)
+    for (let row = 0; row < 5; row++){
+      const ch = conv(GOJUON[row][col]);
+      if (ch && KANA_STROKES[ch]) reading.push(ch);
+    }
+  reading.push(n);
+  W.list = reading.concat(extras);
+
+  $('tab-hira').classList.toggle('sel', !kata);
+  $('tab-kata').classList.toggle('sel', kata);
+}
+
+/* ---------- 練習 ---------- */
+function clearPad(){
+  ['g-guide','g-cue','g-ink','g-live','g-num'].forEach(id => { $(id).innerHTML = ''; });
+}
+/** 部品を、いま使う画面のなかへ移す(部品は1つだけ作って使いまわす) */
+function mount(elId, slotId){
+  const slot = $(slotId), e = $(elId);
+  if (slot && e && e.parentNode !== slot) slot.appendChild(e);
+}
+function mountPad(slotId){ mount('pad', slotId); }
+/** その字の書き順を読み込む(画面は切り替えない) */
+function loadChar(c){
+  clearTimeout(W.timer);
+  W.char = c;
+  W.strokes = KANA_STROKES[c] || [];
+  if (!$('padsvg').contains(probe)) $('padsvg').appendChild(probe);
+  W.refs = W.strokes.map(d => sampleRef(d, 12));
+}
+function openChar(c){
+  W.onDone = null;
+  fbTarget = 'wfb';
+  mountPad('write-slot');
+  $('pad').style.display = '';        // 戦闘で隠していたら戻す
+  loadChar(c);
+  $('w-kind').innerHTML = kindChip(c) + 'の れんしゅう';
+  show('write');
+  setStep('see');
+}
+function setStep(s){
+  W.step = s;
+  W.idx = 0;
+  W.miss = 0;
+  clearTimeout(W.timer);
+  clearPad();
+  $('st-see')  .className = s === 'see'   ? 'now' : 'done';
+  $('st-trace').className = s === 'trace' ? 'now' : (s === 'solo' ? 'done' : '');
+  $('st-solo') .className = s === 'solo'  ? 'now' : '';
+  if (s === 'see'){ playSee(); return; }
+  // 戦闘中はお題の行が案内をかねるので、こちらは出さない
+  if (fbTarget === 'wfb'){
+    if (s === 'trace') wfb('none', 'うすい線を なぞってね');
+    if (s === 'solo')  wfb('none', 'こんどは じぶんで かいてみよう');
+  }
+  renderStatic();
+}
+// 書きの返事を出す先。戦闘中は戦闘画面のほうに出す
+let fbTarget = 'wfb';
+function wfb(kind, text){
+  const t = $(fbTarget);
+  t.className = (fbTarget === 'wfb' ? 'wfb ' : '') + kind;
+  t.textContent = text;
+}
+function renderStatic(){
+  const guide = $('g-guide');
+  guide.innerHTML = '';
+  if (W.step === 'trace'){
+    W.strokes.forEach(d => guide.appendChild(el('path', { d, class:'guide' })));
+  }
+  renderCue();
+}
+function renderCue(){
+  const cue = $('g-cue');
+  cue.innerHTML = '';
+  if (W.step === 'trace' && W.idx < W.strokes.length){
+    cue.appendChild(el('path', { d:W.strokes[W.idx], class:'cue' }));
+  }
+}
+/** まちがえたとき、正しい画を少しだけ光らせる */
+function flashCue(i){
+  const cue = $('g-cue');
+  cue.innerHTML = '';
+  cue.appendChild(el('path', { d:W.strokes[i], class:'cue' }));
+  clearTimeout(W.timer);
+  W.timer = setTimeout(renderCue, 1400);
+}
+
+/* 「みる」: 1画ずつ順に書いてみせる */
+function playSee(){
+  clearTimeout(W.timer);
+  clearPad();
+  wfb('none', W.strokes.length + 'かくで かきます');
+
+  const g = $('g-guide'), gn = $('g-num');
+  const paths = W.strokes.map(d => {
+    const p = el('path', { d, class:'show' });
+    g.appendChild(p);
+    return p;
+  });
+  paths.forEach(p => {
+    const L = p.getTotalLength();
+    p.style.transition = 'none';
+    p.style.strokeDasharray = L + ' ' + L;
+    p.style.strokeDashoffset = String(L);
+  });
+
+  speak(W.char);
+  let i = 0;
+  const step = () => {
+    if (i >= paths.length){
+      W.timer = setTimeout(() => setStep('trace'), 900);
+      return;
+    }
+    const p = paths[i], L = p.getTotalLength();
+    p.style.transition = 'stroke-dashoffset 700ms linear';
+    p.style.strokeDashoffset = '0';
+
+    const s = W.refs[i].pts[0];
+    const t = el('text', { x:(s.x - 3).toFixed(1), y:(s.y - 5).toFixed(1), class:'num' });
+    t.textContent = String(i + 1);
+    gn.appendChild(t);
+
+    speak(NUMWORD[i + 1] || String(i + 1));
+    i++;
+    W.timer = setTimeout(step, 840);
+  };
+  W.timer = setTimeout(step, 500);
+}
+
+/* ---------- 手書き ---------- */
+function padPoint(ev){
+  const r = $('padsvg').getBoundingClientRect();
+  // 画面が切り替わる途中などで大きさが取れないことがある。
+  // そのまま割ると座標が壊れるので、拾わないでおく
+  if (!r.width || !r.height) return null;
+  return { x:(ev.clientX - r.left) / r.width  * 109,
+           y:(ev.clientY - r.top)  / r.height * 109 };
+}
+function ptsAttr(pts){
+  return pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+}
+function liveDraw(){
+  const g = $('g-live');
+  g.innerHTML = '';
+  if (W.pts.length < 2) return;
+  g.appendChild(el('polyline', { class:'live', points: ptsAttr(W.pts) }));
+}
+
+const pad = $('pad');
+pad.addEventListener('pointerdown', ev => {
+  if (W.step === 'see' || W.idx >= W.strokes.length) return;
+  const p = padPoint(ev);
+  if (!p) return;
+  ev.preventDefault();
+  try { pad.setPointerCapture(ev.pointerId); } catch(e){}
+  W.drawing = true;
+  W.pts = [p];
+});
+pad.addEventListener('pointermove', ev => {
+  if (!W.drawing) return;
+  const p = padPoint(ev);
+  if (!p) return;
+  W.pts.push(p);
+  liveDraw();
+});
+pad.addEventListener('pointerup', ev => {
+  if (!W.drawing) return;
+  W.drawing = false;
+  try { pad.releasePointerCapture(ev.pointerId); } catch(e){}
+  $('g-live').innerHTML = '';
+  judgeStroke();
+});
+pad.addEventListener('pointercancel', () => {
+  W.drawing = false;
+  W.pts = [];
+  $('g-live').innerHTML = '';
+});
+
+function judgeStroke(){
+  const usr = resample(W.pts, 12);
+  if (!usr) return;                                  // 点を打っただけ。何もしない
+
+  if (matches(usr, W.refs[W.idx])){
+    $('g-ink').appendChild(el('polyline', { class:'ink', points: ptsAttr(W.pts) }));
+    W.idx++;
+    if (W.idx >= W.strokes.length){ finishChar(); return; }
+    wfb('', 'そう！');
+    renderCue();
+    return;
+  }
+
+  // ほかの画に当てはまるなら「書き順がちがう」と伝える
+  let other = -1;
+  for (let i = 0; i < W.refs.length; i++){
+    if (i !== W.idx && matches(usr, W.refs[i])){ other = i; break; }
+  }
+  W.miss++;
+  if (other >= 0) wfb('soft', (W.idx + 1) + 'かくめ から かこうね');
+  else            wfb('soft', 'ひかっている 線を なぞってみよう');
+  flashCue(W.idx);
+}
+
+function finishChar(){
+  if (W.step === 'trace'){
+    wfb('', 'なぞれたね！');
+    clearTimeout(W.timer);
+    W.timer = setTimeout(() => setStep('solo'), 1200);
+    return;
+  }
+  W.done[W.char] = true;
+  saveDone();
+  if (W.onDone){ const cb = W.onDone; W.onDone = null; cb(); return; }
+  wfb('', 'かけた！');
+  speak(W.char);
+  $('st-solo').className = 'done';
+}
+
+/* ---------- ボタン ---------- */
+$('tab-moji').onclick   = () => { S.set='moji';   $('tab-moji').classList.add('sel');  $('tab-kotoba').classList.remove('sel'); };
+$('tab-kotoba').onclick = () => { S.set='kotoba'; $('tab-kotoba').classList.add('sel'); $('tab-moji').classList.remove('sel'); };
+$('btn-mode-read').onclick   = () => show('readhome');
+$('btn-mode-write').onclick  = () => { loadDone(); buildGrid(); show('pickchar'); };
+$('btn-read-back').onclick   = () => show('home');
+$('btn-pick-back').onclick   = () => show('home');
+$('tab-hira').onclick        = () => { W.set = 'hira'; buildGrid(); };
+$('tab-kata').onclick        = () => { W.set = 'kata'; buildGrid(); };
+$('chk-extra').onchange      = e => { W.extra = e.target.checked; buildGrid(); };
+$('btn-write-back').onclick  = () => { clearTimeout(W.timer); buildGrid(); show('pickchar'); };
+$('btn-see-again').onclick   = () => setStep('see');
+$('btn-write-next').onclick  = () => {
+  const i = W.list.indexOf(W.char);
+  openChar(W.list[(i + 1) % W.list.length]);
+};
+$('btn-write-reset').onclick = () => {
+  W.done = {};
+  saveDone();
+  buildGrid();
+  $('btn-write-reset').textContent = 'けしました';
+  setTimeout(() => { $('btn-write-reset').textContent = 'かけた しるしを けす'; }, 1600);
+};
+
+loadDone();
+
+
+/* =========================================================
+   たたかうモード
+   ・負けはない。敵のHPを削るだけ(まちがえてもダメージは受けない)
+   ・「よむ」と「かく」が混ざって出る
+   ・お手本より先に読めたら クリティカル(2ダメージ)
+     ノーミスで書けたら クリティカル(2ダメージ)
+   ========================================================= */
+
+const LS_RPG = 'dyslexia-p0-rpg-v1';
+
+const FOES = [
+  { id:'slime',  name:'もじスライム',   hp:6,  exp:15, color:'#7FBF95', kind:'slime',  set:'hira',      about:'ひらがな' },
+  { id:'bat',    name:'カナコウモリ',   hp:8,  exp:24, color:'#9B8FD0', kind:'bat',    set:'kata',      about:'カタカナ' },
+  { id:'ghost',  name:'まよいオバケ',   hp:10, exp:36, color:'#79AFD6', kind:'ghost',  set:'both',      about:'ひらがな＋カタカナ' },
+  { id:'spike',  name:'テンテンだま',   hp:12, exp:50, color:'#E0A05C', kind:'spike',  set:'hiraExtra', about:'だくおん・小さい字も' },
+  { id:'mole',   name:'ことばモグラ',   hp:13, exp:60, color:'#C08F63', kind:'mole',   set:'hira',      about:'ことばを まとめて よむ', words:true },
+  { id:'dragon', name:'ふでりゅう',     hp:15, exp:80, color:'#D98A8A', kind:'dragon', set:'all',       about:'ぜんぶ' },
+];
+
+const B = {
+  running:false, busy:false, foe:null, hp:0, turn:'', char:'',
+  lv:1, exp:0, beaten:{}, timer:null, voiceTimer:null,
+};
+
+function needExp(lv){ return 20 + (lv - 1) * 15; }
+
+function loadRpg(){
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(LS_RPG) || '{}'); } catch(e){ s = {}; }
+  B.lv     = s.lv > 0 ? s.lv : 1;
+  B.exp    = s.exp >= 0 ? s.exp : 0;
+  B.beaten = s.beaten || {};
+}
+function saveRpg(){
+  try { localStorage.setItem(LS_RPG, JSON.stringify({ lv:B.lv, exp:B.exp, beaten:B.beaten })); } catch(e){}
+}
+
+/* ---------- 敵の絵 ---------- */
+function foeSvg(f){
+  const c = f.color;
+  const ink = 'rgba(0,0,0,.6)';
+  const eye = (x, y, r) =>
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="${ink}"/>` +
+    `<circle cx="${x + r*0.35}" cy="${y - r*0.35}" r="${r*0.32}" fill="#fff"/>`;
+  const smile = (x, y, w) =>
+    `<path d="M${x-w},${y} q${w},${w*0.8} ${w*2},0" fill="none" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`;
+
+  const body = {
+    slime : `<path d="M10,84 C10,42 28,26 50,26 C72,26 90,42 90,84 Z" fill="${c}"/>
+             <ellipse cx="50" cy="84" rx="40" ry="6" fill="${c}"/>`,
+    bat   : `<path d="M50,40 L8,26 Q14,48 26,54 Z" fill="${c}"/>
+             <path d="M50,40 L92,26 Q86,48 74,54 Z" fill="${c}"/>
+             <ellipse cx="50" cy="58" rx="24" ry="26" fill="${c}"/>
+             <path d="M34,36 L40,20 L48,34 Z" fill="${c}"/>
+             <path d="M66,36 L60,20 L52,34 Z" fill="${c}"/>`,
+    ghost : `<path d="M18,86 L18,50 A32,32 0 0 1 82,50 L82,86 L71,76 L60,86 L50,76 L40,86 L29,76 Z" fill="${c}"/>`,
+    spike : `<path d="M50,10 L62,32 L86,26 L74,48 L92,64 L68,70 L64,92 L50,76 L36,92 L32,70 L8,64 L26,48 L14,26 L38,32 Z" fill="${c}"/>`,
+    mole  : `<path d="M22,40 L14,20 L34,32 Z" fill="${c}"/>
+             <path d="M78,40 L86,20 L66,32 Z" fill="${c}"/>
+             <ellipse cx="50" cy="60" rx="32" ry="30" fill="${c}"/>
+             <ellipse cx="50" cy="72" rx="13" ry="10" fill="rgba(0,0,0,.16)"/>`,
+    dragon: `<path d="M30,26 L22,8 L40,18 Z" fill="${c}"/>
+             <path d="M70,26 L78,8 L60,18 Z" fill="${c}"/>
+             <path d="M8,74 Q4,52 20,46 Z" fill="${c}"/>
+             <path d="M92,74 Q96,52 80,46 Z" fill="${c}"/>
+             <ellipse cx="50" cy="58" rx="34" ry="32" fill="${c}"/>`,
+  }[f.kind];
+
+  const face = {
+    slime : eye(38,58,6) + eye(62,58,6) + smile(50,72,9),
+    bat   : eye(41,56,5) + eye(59,56,5) + smile(50,68,7),
+    ghost : eye(39,52,6) + eye(61,52,6) + smile(50,66,8),
+    spike : eye(42,48,5) + eye(58,48,5) + smile(50,60,7),
+    mole  : eye(40,52,5) + eye(60,52,5) + smile(50,66,7),
+    dragon: eye(39,54,7) + eye(61,54,7) + smile(50,70,10),
+  }[f.kind];
+
+  return `<svg viewBox="0 0 100 100" role="img" aria-label="${f.name}">${body}${face}</svg>`;
+}
+
+/* ---------- 出題する文字 ---------- */
+function foeChars(setId){
+  const both = HIRA_BASE.concat(KATA_BASE);
+  const list = {
+    hira      : HIRA_BASE,
+    kata      : KATA_BASE,
+    both      : both,
+    hiraExtra : HIRA_BASE.concat(HIRA_EXTRA),
+    all       : both.concat(HIRA_EXTRA, KATA_EXTRA),
+  }[setId] || HIRA_BASE;
+  return list.filter(c => KANA_STROKES[c]);
+}
+
+/* ---------- てきえらび ---------- */
+function renderPick(){
+  loadRpg();
+  $('lvline').textContent = 'レベル ' + B.lv;
+  const need = needExp(B.lv);
+  $('expbar').style.width = Math.min(100, B.exp / need * 100) + '%';
+  $('explabel').textContent = 'つぎのレベルまで あと ' + Math.max(0, need - B.exp);
+
+  const list = $('foelist');
+  list.innerHTML = '';
+  FOES.forEach((f, i) => {
+    const open = i === 0 || B.beaten[FOES[i-1].id];
+    const b = document.createElement('button');
+    b.className = 'foecard' + (open ? '' : ' locked') + (B.beaten[f.id] ? ' beaten' : '');
+    b.innerHTML = foeSvg(f) +
+      `<span><span class="fname">${open ? f.name : '？？？'}</span>` +
+      `<span class="fsub">${open ? f.about + ' ／ HP ' + f.hp : 'まえの てきを たおすと あらわれる'}</span></span>`;
+    if (open) b.onclick = () => startBattle(f);
+    else b.disabled = true;
+    list.appendChild(b);
+  });
+}
+
+/* ---------- 戦闘 ---------- */
+/* 戦闘では、よむ欄・書くパッド・選択パネルが同じ場所を使いまわす。
+   使わない部品は必ず隠す(隠さないと前の問題のものが残って重なる) */
+function showZone(which){
+  $('b-read').style.display      = which === 'read'   ? '' : 'none';
+  $('battle-slot').style.display = which === 'read'   ? 'none' : '';
+  $('pad').style.display         = which === 'write'  ? '' : 'none';
+  $('mw-choices').style.display  = which === 'mikake' ? '' : 'none';
+  // お手本を見せられるのは、書くときだけ
+  $('btn-b-hint').style.display  = which === 'write'  ? '' : 'none';
+}
+
+/** 問題ごとに、前の問題の跡を消してまっさらにする */
+function clearTurn(){
+  clearTimeout(W.hintTimer);
+  clearPad();                                   // 書いた線・お手本・画数の番号
+  $('mw-choices').innerHTML = '';               // 選んだパネルの印
+  $('b-glyph').textContent = '';
+  $('b-glyph').className = 'bglyph';
+  $('b-task').textContent = '';
+  bmsg('none', '');
+}
+
+/** 「おてほんを みる」: しばらくだけ うすい手本を出す */
+function showHint(){
+  if (!B.running || B.turn !== 'write') return;
+  const g = $('g-guide');
+  g.innerHTML = '';
+  W.strokes.forEach(d => g.appendChild(el('path', { d, class:'guide' })));
+  clearTimeout(W.hintTimer);
+  W.hintTimer = setTimeout(() => {
+    if (W.step !== 'trace') $('g-guide').innerHTML = '';
+  }, 3000);
+}
+function paintHp(){
+  $('foehp').style.width = Math.max(0, B.hp / B.foe.hp * 100) + '%';
+  $('foename').textContent = B.foe.name + '  HP ' + Math.max(0, B.hp) + ' / ' + B.foe.hp;
+}
+function bmsg(kind, text){
+  $('b-msg').className = kind;
+  $('b-msg').textContent = text;
+}
+
+async function startBattle(f){
+  loadRpg();
+  B.foe = f;
+  B.hp = f.hp;
+  B.running = true;
+  B.busy = false;
+  fbTarget = 'b-msg';
+  W.onDone = null;
+
+  $('foe').innerHTML = foeSvg(f);
+  $('b-buttons').innerHTML = '';
+  $('b-help').style.display = '';
+  paintHp();
+  showZone('read');
+  clearTurn();
+  bmsg('none', 'マイクを ようい しています…');
+  show('battle');
+
+  // 声で戦うのでマイクを使う。だめならタップで代わりにする
+  S.useMic = true;
+  S.wait   = 2000;
+  S.sensDb = +$('s-sens').value || 11;
+  try {
+    await micStart();
+    await calibrate(1200);
+  } catch(e){
+    S.useMic = false;
+  }
+  if (!B.running) return;                       // 準備中に「にげる」を押された
+  bmsg('none', S.useMic ? '' : '声のかわりに 画面を タップしてね');
+  await sleep(500);
+  nextTurn();
+}
+
+function endBattle(){
+  B.running = false;
+  B.busy = false;
+  clearTimeout(B.timer);
+  clearTimeout(B.voiceTimer);
+  clearTimeout(W.hintTimer);
+  disarm();
+  micStop();
+  W.onDone = null;
+  fbTarget = 'wfb';
+}
+
+function damage(n, label){
+  B.hp -= n;
+  paintHp();
+  const foe = $('foe');
+  foe.classList.remove('idle');
+  foe.classList.add('hit');
+  setTimeout(() => { foe.classList.remove('hit'); foe.classList.add('idle'); }, 340);
+  bmsg(n > 1 ? 'crit' : '', label);
+}
+
+function nextTurn(){
+  if (!B.running) return;
+  if (B.hp <= 0){ victory(); return; }
+  B.busy = false;
+  clearTurn();                       // 前の問題の跡を消してから次を出す
+
+  const sets  = confuseSetsFor(B.foe);
+  const kinds = ['read', 'write'];
+  if (sets.length) kinds.push('mikake');
+  B.turn = kinds[Math.floor(Math.random() * kinds.length)];
+
+  if (B.turn === 'mikake'){
+    B.mwSet = sets[Math.floor(Math.random() * sets.length)];
+    B.char  = B.mwSet[Math.floor(Math.random() * B.mwSet.length)];
+    mikakeTurn();
+    return;
+  }
+  // ことばの敵だけ、よむターンが単語になる(T式の第2段階)
+  if (B.turn === 'read' && B.foe.words){
+    B.char = WORDS[Math.floor(Math.random() * WORDS.length)];
+    readTurn();
+    return;
+  }
+  const chars = foeChars(B.foe.set);
+  B.char = chars[Math.floor(Math.random() * chars.length)];
+  if (B.turn === 'read') readTurn();
+  else                   writeTurn();
+}
+
+/* みわけターン: にている字から えらぶ */
+function mikakeTurn(){
+  showZone('mikake');
+  mount('mw-choices', 'battle-slot');
+  $('b-task').innerHTML = kindChip(B.char) + 'の どれ？';
+  bmsg('none', '');
+  B.mwLocked = false;
+
+  const box = $('mw-choices');
+  box.innerHTML = '';
+  shuffle(B.mwSet).forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'choice';
+    b.dataset.char = c;
+    b.setAttribute('aria-label', c);
+    b.appendChild(strokeSvg(c));
+    b.onclick = () => battleMwPick(c, b);
+    box.appendChild(b);
+  });
+  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 350);
+}
+function battleMwPick(c, btn){
+  if (!B.running || B.mwLocked) return;
+  B.mwLocked = true;
+  const right = $('mw-choices').querySelector('[data-char="' + B.char + '"]');
+  if (c === B.char){
+    btn.classList.add('right');
+    damage(1, 'そう！ こうげき！');
+    afterTurn();
+    return;
+  }
+  btn.classList.add('wrong');
+  right.classList.add('right');
+  bmsg('soft', 'こっちだよ');
+  animateStrokes(right.querySelector('svg'), 520);
+  afterTurn(3200);                        // 書いて見せるあいだ待つ
+}
+
+/* よむターン: お手本より先に声を出せたら クリティカル */
+async function readTurn(){
+  showZone('read');
+  $('b-task').textContent = 'よんで！';
+  $('b-glyph').textContent = B.char;
+  $('b-glyph').classList.toggle('word', B.char.length > 1);
+  bmsg('none', '');
+
+  let hit = null;
+  await new Promise(resolve => {
+    let settled = false;
+    armListen(() => { if (!settled){ settled = true; hit = 'crit'; resolve(); } });
+    B.timer = setTimeout(() => { if (!settled){ settled = true; disarm(); resolve(); } }, S.wait);
+  });
+  if (!B.running) return;
+
+  if (hit === 'crit'){
+    damage(2, 'はやい！ かいしんの いちげき！');
+    disarm();
+    await speak(B.char);
+    return afterTurn();
+  }
+
+  disarm();
+  await speak(B.char);                          // お手本を聞かせる
+  if (!B.running) return;
+  await sleep(120);
+
+  await new Promise(resolve => {
+    let settled = false;
+    armListen(() => { if (!settled){ settled = true; hit = 'ok'; resolve(); } });
+    B.timer = setTimeout(() => { if (!settled){ settled = true; disarm(); resolve(); } }, 2500);
+  });
+  if (!B.running) return;
+  disarm();
+
+  if (hit === 'ok') damage(1, 'よめた！ こうげき！');
+  else              bmsg('soft', 'つぎ いこう');
+  afterTurn();
+}
+
+/* かくターン: ノーミスで書けたら クリティカル
+   何を書くかは声で伝える。わからなくなったら「もういちど きく」で聞き直せる */
+function writeTurn(){
+  showZone('write');
+  mountPad('battle-slot');
+  $('b-task').innerHTML = kindChip(B.char) + 'で かいて！';
+  bmsg('none', '');
+  loadChar(B.char);
+  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 350);
+  W.onDone = () => {
+    if (!B.running) return;
+    if (W.miss === 0) damage(2, 'きれいに かけた！ かいしんの いちげき！');
+    else              damage(1, 'かけた！ こうげき！');
+    afterTurn();
+  };
+  setStep('solo');
+}
+
+function afterTurn(delay){
+  if (!B.running) return;
+  clearTimeout(B.timer);
+  if (B.hp <= 0){ B.timer = setTimeout(victory, 900); return; }
+  B.timer = setTimeout(nextTurn, delay || 1100);
+}
+
+function victory(){
+  const f = B.foe;
+  endBattle();
+
+  const before = B.lv;
+  B.exp += f.exp;
+  let ups = 0;
+  while (B.exp >= needExp(B.lv)){ B.exp -= needExp(B.lv); B.lv++; ups++; }
+  B.beaten[f.id] = true;
+  saveRpg();
+
+  showZone('read');
+  clearTurn();
+  $('b-help').style.display = 'none';
+  $('foehp').style.width = '0%';
+  bmsg('crit', f.name + 'を たおした！');
+  speak('やったね');
+
+  const lines = document.createElement('div');
+  lines.className = 'note';
+  lines.style.textAlign = 'center';
+  lines.textContent = 'けいけんち ' + f.exp + ' を てにいれた' +
+    (ups ? ' ／ レベル ' + before + ' → ' + B.lv + ' に あがった！' : '');
+  $('b-msg').after(lines);
+
+  const i = FOES.indexOf(f);
+  const box = $('b-buttons');
+  box.innerHTML = '';
+  if (i + 1 < FOES.length){
+    const nb = document.createElement('button');
+    nb.textContent = 'つぎの てきへ';
+    nb.onclick = () => { lines.remove(); startBattle(FOES[i + 1]); };
+    box.appendChild(nb);
+  }
+  const bb = document.createElement('button');
+  bb.className = 'ghost';
+  bb.textContent = 'もどる';
+  bb.onclick = () => { lines.remove(); renderPick(); show('battlepick'); };
+  box.appendChild(bb);
+}
+
+// かくときは「ひらがなの あ」まで言う。よむときは字が見えているので字だけ
+$('btn-b-again').onclick = () => {
+  if (!B.char) return;
+  if (B.turn === 'write' || B.turn === 'mikake') sayKana(B.char, () => B.running);
+  else speak(B.char);
+};
+$('btn-b-hint').onclick  = showHint;
+
+/* タップで戦う(マイクが使えないとき) */
+$('b-read').addEventListener('pointerdown', () => {
+  if (B.running && !S.useMic) fireKey();
+});
+
+/* ---------- ボタン ---------- */
+$('btn-mode-battle').onclick = () => { renderPick(); show('battlepick'); };
+$('btn-battle-back').onclick = () => show('home');
+$('btn-battle-quit').onclick = () => { endBattle(); renderPick(); show('battlepick'); };
+$('btn-rpg-reset').onclick = () => {
+  B.lv = 1; B.exp = 0; B.beaten = {};
+  saveRpg();
+  renderPick();
+  $('btn-rpg-reset').textContent = 'やりなおしました';
+  setTimeout(() => { $('btn-rpg-reset').textContent = 'さいしょから やりなおす'; }, 1600);
+};
+
+loadRpg();
+
+
+/* =========================================================
+   みわけ — にている形の字を見分ける
+   「わ／ね／れ」「シ／ツ」などの混同は読み書き障害の典型症状。
+   書き順データがあるので、"どこが ちがうか" を動きで見せられる。
+   ========================================================= */
+
+const CONFUSE = [
+  ['わ','ね','れ'], ['め','ぬ'], ['は','ほ'], ['る','ろ'],
+  ['い','り'],      ['つ','し'], ['さ','き'], ['あ','お'], ['ま','も'],
+  ['シ','ツ'],      ['ソ','ン'], ['ス','ヌ'], ['ク','ワ'],
+  ['ナ','メ'],      ['マ','ム'], ['チ','テ'], ['ウ','ワ'],
+];
+
+/** その字の書き順パスだけを描いた小さなSVG */
+function strokeSvg(c){
+  const svg = el('svg', { viewBox:'0 0 109 109' });
+  (KANA_STROKES[c] || []).forEach(d => svg.appendChild(el('path', { d })));
+  return svg;
+}
+/** 1画ずつ書いてみせる */
+function animateStrokes(svg, ms){
+  const ps = [...svg.querySelectorAll('path')];
+  ps.forEach(p => {
+    const L = p.getTotalLength();
+    p.style.transition = 'none';
+    p.style.strokeDasharray = L + ' ' + L;
+    p.style.strokeDashoffset = String(L);
+  });
+  let i = 0;
+  const step = () => {
+    if (i >= ps.length) return;
+    const p = ps[i];
+    p.style.transition = 'stroke-dashoffset ' + ms + 'ms linear';
+    p.style.strokeDashoffset = '0';
+    i++;
+    setTimeout(step, ms + 90);
+  };
+  setTimeout(step, 60);
+}
+function shuffle(a){
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
+
+const MW = { set:[], target:'', locked:false, timer:null };
+
+function mwStart(){
+  mount('mw-choices', 'mw-slot');     // 戦闘に貸し出していたら戻す
+  $('mw-choices').style.display = '';
+  show('mikake');
+  mwNext();
+}
+/** その敵が出す字だけでできている「にている組」 */
+function confuseSetsFor(foe){
+  const pool = new Set(foeChars(foe.set));
+  return CONFUSE.filter(s => s.every(c => pool.has(c)));
+}
+function mwNext(){
+  clearTimeout(MW.timer);
+  MW.locked = false;
+  const sets = CONFUSE.filter(s => s.every(c => KANA_STROKES[c]));
+  MW.set = sets[Math.floor(Math.random() * sets.length)];
+  MW.target = MW.set[Math.floor(Math.random() * MW.set.length)];
+
+  $('mw-task').innerHTML = kindChip(MW.target) + 'の どれ？';
+  $('mw-msg').className = 'wfb none';
+  $('mw-msg').textContent = '';
+
+  const box = $('mw-choices');
+  box.innerHTML = '';
+  shuffle(MW.set).forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'choice';
+    b.dataset.char = c;
+    b.setAttribute('aria-label', c);
+    b.appendChild(strokeSvg(c));
+    b.onclick = () => mwPick(c, b);
+    box.appendChild(b);
+  });
+  sayKana(MW.target, () => $('mikake').classList.contains('on'));
+}
+function mwPick(c, btn){
+  if (MW.locked) return;
+  MW.locked = true;
+  const right = $('mw-choices').querySelector('[data-char="' + MW.target + '"]');
+
+  if (c === MW.target){
+    btn.classList.add('right');
+    $('mw-msg').className = 'wfb';
+    $('mw-msg').textContent = 'そう！';
+    animateStrokes(btn.querySelector('svg'), 520);
+    MW.timer = setTimeout(mwNext, 2400);
+    return;
+  }
+  // まちがえても×は出さない。正しいほうを書いて見せる
+  btn.classList.add('wrong');
+  right.classList.add('right');
+  $('mw-msg').className = 'wfb soft';
+  $('mw-msg').textContent = 'こっちだよ';
+  animateStrokes(right.querySelector('svg'), 560);
+  speak(READ_AS[MW.target] || MW.target);
+  MW.timer = setTimeout(mwNext, 3600);
+}
+
+
+/* =========================================================
+   おとの かず — 特殊音節(ん・っ・ー・拗音)
+   日本語のディスレクシアで一番大きな壁。文字と音が1対1でなくなる。
+   むずかしい順は 撥音 → 長音・促音 → 拗長音 → 拗促音。その順に出す。
+   ========================================================= */
+
+const MORA_WORDS = [
+  { w:'みかん',      k:'ん' }, { w:'りんご',   k:'ん' }, { w:'ごはん', k:'ん' },
+  { w:'きりん',      k:'ん' }, { w:'パンダ',   k:'ん' }, { w:'えんぴつ', k:'ん' },
+  { w:'きって',      k:'っ' }, { w:'らっぱ',   k:'っ' }, { w:'コップ', k:'っ' },
+  { w:'ねっこ',      k:'っ' }, { w:'しっぽ',   k:'っ' },
+  { w:'ケーキ',      k:'ー' }, { w:'ノート',   k:'ー' }, { w:'スープ', k:'ー' },
+  { w:'テープ',      k:'ー' }, { w:'ラーメン', k:'ー' },
+  { w:'しゃしん',    k:'拗音' }, { w:'でんしゃ', k:'拗音' }, { w:'おもちゃ', k:'拗音' },
+  { w:'きんぎょ',    k:'拗音' }, { w:'きゅうり', k:'拗音' },
+  { w:'しゅっぱつ',  k:'拗促音' }, { w:'きょうしつ', k:'拗長音' }, { w:'きゅうしょく', k:'拗長音' },
+];
+
+const SMALL_Y = 'ゃゅょャュョ';
+
+/** ことばを拍(モーラ)に分ける。小さい「ゃゅょ」は前の字とひとまとまり */
+function splitMora(w){
+  const out = [];
+  for (const ch of w){
+    if (SMALL_Y.includes(ch) && out.length) out[out.length - 1] += ch;
+    else out.push(ch);
+  }
+  return out;
+}
+/** その拍が特殊音節か(っ ー ん、および拗音) */
+function isSpecial(m){
+  return m.length > 1 || 'っッーんン'.includes(m);
+}
+
+const HK = { i:0, word:null, mora:[], taps:0, tries:0, timer:null, judge:null };
+
+function hkStart(){
+  show('haku');
+  HK.i = 0;
+  hkNext();
+}
+function hkNext(){
+  clearTimeout(HK.timer); clearTimeout(HK.judge);
+  HK.word = MORA_WORDS[HK.i % MORA_WORDS.length];
+  HK.i++;
+  HK.mora = splitMora(HK.word.w);
+  HK.taps = 0;
+  HK.tries = 0;
+  $('hk-word').textContent = '';
+  $('hk-beats').innerHTML = '';
+  $('hk-tap').classList.remove('hit');
+  $('hk-msg').className = 'wfb none';
+  $('hk-msg').textContent = '';
+  hkSay();
+}
+function hkSay(){ speak(HK.word.w); }
+
+function hkTap(){
+  if (!$('haku').classList.contains('on') || !HK.mora.length) return;
+  clearTimeout(HK.judge);
+  HK.taps++;
+  const b = document.createElement('div');
+  b.className = 'beat on';
+  $('hk-beats').appendChild(b);
+  $('hk-tap').classList.add('hit');
+  setTimeout(() => $('hk-tap').classList.remove('hit'), 140);
+  HK.judge = setTimeout(hkCheck, 1300);       // たたき終わったら数える
+}
+function hkCheck(){
+  if (HK.taps === HK.mora.length){
+    $('hk-msg').className = 'wfb';
+    $('hk-msg').textContent = 'そう！ ' + HK.mora.length + 'こ！';
+    hkReveal();
+    HK.timer = setTimeout(hkNext, 3800);
+    return;
+  }
+  HK.tries++;
+  if (HK.tries >= 2){                          // 2回外したら答えを見せる(責めない)
+    $('hk-msg').className = 'wfb soft';
+    $('hk-msg').textContent = HK.mora.length + 'こ だったね';
+    hkReveal();
+    HK.timer = setTimeout(hkNext, 4400);
+    return;
+  }
+  $('hk-msg').className = 'wfb soft';
+  $('hk-msg').textContent = 'もういちど きいてみよう';
+  HK.taps = 0;
+  $('hk-beats').innerHTML = '';
+  HK.timer = setTimeout(hkSay, 700);
+}
+/** 拍ごとにマスを出す。特殊音節は色を変えて目立たせる */
+function hkReveal(){
+  $('hk-word').textContent = HK.word.w;
+  const box = $('hk-beats');
+  box.innerHTML = '';
+  HK.mora.forEach((m, i) => {
+    const b = document.createElement('div');
+    b.className = 'beat on' + (isSpecial(m) ? ' sp' : '');
+    b.textContent = m;
+    box.appendChild(b);
+    setTimeout(() => { if ($('haku').classList.contains('on')) speak(m); }, 400 + i * 620);
+  });
+}
+
+$('hk-tap').addEventListener('pointerdown', ev => { ev.preventDefault(); hkTap(); });
+
+$('btn-mode-mikake').onclick = mwStart;
+$('btn-mode-haku').onclick   = hkStart;
+$('btn-mw-back').onclick  = () => { clearTimeout(MW.timer); show('home'); };
+$('btn-mw-again').onclick = () => sayKana(MW.target, () => $('mikake').classList.contains('on'));
+$('btn-mw-next').onclick  = mwNext;
+$('btn-hk-back').onclick  = () => { clearTimeout(HK.timer); clearTimeout(HK.judge); show('home'); };
+$('btn-hk-again').onclick = () => { HK.taps = 0; $('hk-beats').innerHTML = ''; hkSay(); };
+$('btn-hk-next').onclick  = hkNext;
+</script>
+</body>
+</html>
