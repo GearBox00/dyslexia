@@ -20,6 +20,8 @@
     --warnbg:#FDF3E0;
     --warnline:#EBD9B4;
     --field:#FFFFFF;
+    --stage1:#E7F0F7;      /* 戦闘ステージの空 */
+    --stage2:#F6EEDF;      /* 戦闘ステージの地面 */
   }
   /* まぶしさを避ける方針は暗い側でも同じ。単純な反転ではなく暖色の低コントラスト */
   @media (prefers-color-scheme: dark){
@@ -27,20 +29,20 @@
       --bg:#211E1A; --fg:#EFE8DA; --sub:#A79C8C; --line:#3A342C;
       --accent:#6FA8DC; --good:#5FC391; --soft:#E0B65C;
       --card:#292521; --meter:#332E27; --dot:#3A342C; --dotn:#544C41;
-      --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815;
+      --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815; --stage1:#26313A; --stage2:#2E2921;
     }
   }
   :root[data-theme="dark"]{
     --bg:#211E1A; --fg:#EFE8DA; --sub:#A79C8C; --line:#3A342C;
     --accent:#6FA8DC; --good:#5FC391; --soft:#E0B65C;
     --card:#292521; --meter:#332E27; --dot:#3A342C; --dotn:#544C41;
-    --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815;
+    --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815; --stage1:#26313A; --stage2:#2E2921;
   }
   :root[data-theme="light"]{
     --bg:#FBF7EE; --fg:#2E2A26; --sub:#7A736B; --line:#E4DCCC;
     --accent:#3B82C4; --good:#2E9E6B; --soft:#D9A441;
     --card:#FFFDF8; --meter:#EDE6D8; --dot:#E4DCCC; --dotn:#C9C0B2;
-    --warnbg:#FDF3E0; --warnline:#EBD9B4; --field:#FFFFFF;
+    --warnbg:#FDF3E0; --warnline:#EBD9B4; --field:#FFFFFF; --stage1:#E7F0F7; --stage2:#F6EEDF;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -202,6 +204,51 @@
   .foecard.beaten{border-color:var(--good);}
 
   #battle{align-items:center;text-align:center;}
+
+  /* 戦闘のステージ。ここだけ空気を変えて「戦っている場所」に見せる */
+  .stage{position:relative;width:min(430px,92vw);margin:0 auto 10px;
+    padding:16px 12px 10px;border-radius:26px;overflow:hidden;
+    background:linear-gradient(180deg,var(--stage1) 0%,var(--stage1) 62%,var(--stage2) 62%,var(--stage2) 100%);
+    border:2px solid var(--line);}
+  .stage.shake{animation:shake .34s ease-in-out;}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}
+    50%{transform:translateX(6px)}80%{transform:translateX(-4px)}}
+  @keyframes enter{0%{opacity:0;transform:translateY(-26px) scale(.7)}
+    70%{opacity:1;transform:translateY(4px) scale(1.05)}100%{transform:translateY(0) scale(1)}}
+  .foe.enter svg{animation:enter .62s ease-out;}
+
+  /* ダメージの数字が飛ぶ */
+  .dmg{position:absolute;left:50%;top:26%;font-size:2.3rem;font-weight:bold;
+    color:var(--good);text-shadow:0 2px 0 rgba(255,255,255,.55);
+    pointer-events:none;letter-spacing:0;animation:dmgpop .95s ease-out forwards;}
+  .dmg.crit{font-size:3.1rem;color:#D9541F;}
+  @keyframes dmgpop{
+    0%{opacity:0;transform:translate(-50%,14px) scale(.5)}
+    22%{opacity:1;transform:translate(-50%,-8px) scale(1.18)}
+    100%{opacity:0;transform:translate(-50%,-62px) scale(1)}}
+
+  .combo{position:absolute;right:12px;top:12px;font-size:.9rem;letter-spacing:.06em;
+    color:#fff;background:var(--soft);border-radius:999px;padding:4px 12px;
+    opacity:0;transition:opacity .25s;}
+  .combo.on{opacity:1;}
+
+  .lvrow{display:flex;align-items:center;justify-content:center;gap:10px;
+    font-size:.85rem;color:var(--sub);letter-spacing:.06em;}
+  .lvbadge{background:var(--accent);color:#fff;border-radius:999px;padding:3px 12px;}
+
+  /* レベルアップの帯 */
+  .levelup{position:fixed;left:0;right:0;top:38%;z-index:20;text-align:center;
+    font-size:1.9rem;letter-spacing:.14em;color:#fff;padding:16px 0;
+    background:var(--soft);box-shadow:0 6px 24px rgba(0,0,0,.25);
+    animation:lvbanner 2.4s ease-out forwards;}
+  @keyframes lvbanner{0%{opacity:0;transform:scale(.9)}12%{opacity:1;transform:scale(1)}
+    80%{opacity:1}100%{opacity:0}}
+
+  @media (prefers-reduced-motion:reduce){
+    .stage.shake,.foe.enter svg,.dmg,.levelup{animation:none;}
+    .dmg{opacity:1;}
+  }
+
   .foe{width:min(190px,46vw);margin:2px auto 0;}
   .foe svg{width:100%;height:auto;display:block;}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
@@ -426,6 +473,17 @@
   <div class="bar exp"><i id="expbar"></i></div>
   <p class="barlabel" id="explabel"></p>
 
+  <div class="tabs">
+    <button id="tab-mix" class="sel">ぜんぶ</button>
+    <button id="tab-read">よみ だけ</button>
+    <button id="tab-writeonly">かき だけ</button>
+  </div>
+
+  <label class="row" style="margin:8px 4px 0">
+    <input type="checkbox" id="chk-sound" checked style="width:24px;height:24px;accent-color:var(--accent)">
+    <span>おとを ならす</span>
+  </label>
+
   <div class="foelist" id="foelist"></div>
 
   <div class="btnrow" style="margin-top:16px">
@@ -438,9 +496,17 @@
 <section id="battle" class="screen">
   <div class="topbar"><button class="ghost" id="btn-battle-quit">にげる</button></div>
 
-  <div class="foe idle" id="foe"></div>
-  <p class="barlabel" id="foename"></p>
-  <div class="bar"><i id="foehp"></i></div>
+  <div class="stage" id="stage">
+    <div class="combo" id="b-combo"></div>
+    <div class="foe idle" id="foe"></div>
+    <p class="barlabel" id="foename"></p>
+    <div class="bar"><i id="foehp"></i></div>
+  </div>
+
+  <div class="lvrow">
+    <span class="lvbadge" id="b-lv"></span>
+    <div class="bar exp" style="margin:0;flex:1;max-width:170px"><i id="b-exp"></i></div>
+  </div>
 
   <p class="btask" id="b-task"></p>
 
@@ -1604,9 +1670,44 @@ const FOES = [
 const B = {
   running:false, busy:false, foe:null, hp:0, turn:'', char:'',
   lv:1, exp:0, beaten:{}, timer:null, voiceTimer:null,
+  style:'mix',    // ぜんぶ / よみだけ / かきだけ
+  combo:0,        // 連続で当てた数
+  sound:true,
 };
 
 function needExp(lv){ return 20 + (lv - 1) * 15; }
+
+/* ---------- 効果音 ----------
+   音のファイルは持たず、その場で作る(オフラインでも鳴る)。
+   まちがえたときの音は鳴らさない。責める音は出さない方針。      */
+const SFX = { ctx:null };
+
+function sfxInit(){
+  if (!B.sound) return;
+  if (!SFX.ctx){
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return;
+    try { SFX.ctx = new C(); } catch(e){ return; }
+  }
+  if (SFX.ctx.state === 'suspended') SFX.ctx.resume();
+}
+function beep(freq, at, dur, type, vol){
+  if (!B.sound || !SFX.ctx) return;
+  const t0 = SFX.ctx.currentTime + at;
+  const o = SFX.ctx.createOscillator(), g = SFX.ctx.createGain();
+  o.type = type || 'triangle';
+  o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol || 0.16, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(SFX.ctx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+}
+const sfxHit   = () => { beep(520, 0, .12); beep(784, .05, .14); };
+const sfxCrit  = () => [523,659,784,1047].forEach((f,i) => beep(f, i*.055, .2, 'square', .13));
+const sfxWin   = () => [659,784,988,1319].forEach((f,i) => beep(f, i*.11, .38, 'triangle', .15));
+const sfxLevel = () => [523,659,784,1047,1319].forEach((f,i) => beep(f, i*.085, .34, 'triangle', .16));
+const sfxAppear= () => { beep(220, 0, .18, 'sawtooth', .1); beep(165, .12, .26, 'sawtooth', .09); };
 
 function loadRpg(){
   let s = {};
@@ -1614,9 +1715,13 @@ function loadRpg(){
   B.lv     = s.lv > 0 ? s.lv : 1;
   B.exp    = s.exp >= 0 ? s.exp : 0;
   B.beaten = s.beaten || {};
+  B.sound  = s.sound !== false;
 }
 function saveRpg(){
-  try { localStorage.setItem(LS_RPG, JSON.stringify({ lv:B.lv, exp:B.exp, beaten:B.beaten })); } catch(e){}
+  try {
+    localStorage.setItem(LS_RPG, JSON.stringify(
+      { lv:B.lv, exp:B.exp, beaten:B.beaten, sound:B.sound }));
+  } catch(e){}
 }
 
 /* ---------- 敵の絵 ---------- */
@@ -1678,6 +1783,7 @@ function foeChars(setId){
 /* ---------- てきえらび ---------- */
 function renderPick(){
   loadRpg();
+  $('chk-sound').checked = B.sound;
   $('lvline').textContent = 'レベル ' + B.lv;
   const need = needExp(B.lv);
   $('expbar').style.width = Math.min(100, B.exp / need * 100) + '%';
@@ -1736,6 +1842,23 @@ function paintHp(){
   $('foehp').style.width = Math.max(0, B.hp / B.foe.hp * 100) + '%';
   $('foename').textContent = B.foe.name + '  HP ' + Math.max(0, B.hp) + ' / ' + B.foe.hp;
 }
+function paintLv(){
+  $('b-lv').textContent = 'Lv ' + B.lv;
+  $('b-exp').style.width = Math.min(100, B.exp / needExp(B.lv) * 100) + '%';
+}
+function paintCombo(){
+  const c = $('b-combo');
+  c.textContent = B.combo + ' れんぞく！';
+  c.classList.toggle('on', B.combo >= 2);
+}
+/** ダメージの数字を飛ばす */
+function popDamage(n, crit){
+  const d = document.createElement('div');
+  d.className = 'dmg' + (crit ? ' crit' : '');
+  d.textContent = '-' + n;
+  $('stage').appendChild(d);
+  setTimeout(() => d.remove(), 1000);
+}
 function bmsg(kind, text){
   $('b-msg').className = kind;
   $('b-msg').textContent = text;
@@ -1747,6 +1870,7 @@ async function startBattle(f){
   B.hp = f.hp;
   B.running = true;
   B.busy = false;
+  B.combo = 0;
   fbTarget = 'b-msg';
   W.onDone = null;
 
@@ -1754,12 +1878,14 @@ async function startBattle(f){
   $('b-buttons').innerHTML = '';
   $('b-help').style.display = '';
   paintHp();
+  paintLv();
+  paintCombo();
   showZone('read');
   clearTurn();
-  bmsg('none', 'マイクを ようい しています…');
   show('battle');
+  sfxInit();
 
-  // 声で戦うのでマイクを使う。だめならタップで代わりにする
+  // 先にマイクを用意する(だまって行う)。だめならタップで代わりにする
   S.useMic = true;
   S.wait   = 2000;
   S.sensDb = +$('s-sens').value || 11;
@@ -1770,8 +1896,14 @@ async function startBattle(f){
     S.useMic = false;
   }
   if (!B.running) return;                       // 準備中に「にげる」を押された
-  bmsg('none', S.useMic ? '' : '声のかわりに 画面を タップしてね');
-  await sleep(500);
+
+  // 登場の演出。マイクの用意が終わってから見せる(一瞬で消えないように)
+  $('foe').classList.add('enter');
+  setTimeout(() => $('foe').classList.remove('enter'), 700);
+  sfxAppear();
+  bmsg('crit', f.name + 'が あらわれた！');
+  if (!S.useMic) $('b-task').textContent = '声のかわりに 画面を タップしてね';
+  await sleep(1300);
   nextTurn();
 }
 
@@ -1787,14 +1919,35 @@ function endBattle(){
   fbTarget = 'wfb';
 }
 
-function damage(n, label){
+function damage(n, label, crit){
   B.hp -= n;
   paintHp();
+  popDamage(n, crit);
   const foe = $('foe');
   foe.classList.remove('idle');
   foe.classList.add('hit');
   setTimeout(() => { foe.classList.remove('hit'); foe.classList.add('idle'); }, 340);
-  bmsg(n > 1 ? 'crit' : '', label);
+  if (crit){
+    $('stage').classList.add('shake');
+    setTimeout(() => $('stage').classList.remove('shake'), 360);
+    sfxCrit();
+  } else sfxHit();
+  bmsg(crit ? 'crit' : '', label);
+}
+
+/** 当てたとき。3回つづけて当てるとボーナスが1つ増える */
+function hitFoe(base, label, crit){
+  B.combo++;
+  paintCombo();
+  let dmg = base, msg = label;
+  if (B.combo >= 3 && B.combo % 3 === 0){ dmg += 1; msg = label + ' ＋れんぞくボーナス！'; }
+  damage(dmg, msg, !!crit);
+}
+/** 外したとき。ダメージは受けない。音も鳴らさない */
+function missFoe(kind, msg){
+  B.combo = 0;
+  paintCombo();
+  bmsg(kind, msg);
 }
 
 function nextTurn(){
@@ -1803,9 +1956,15 @@ function nextTurn(){
   B.busy = false;
   clearTurn();                       // 前の問題の跡を消してから次を出す
 
+  // バトルの種類にあわせて、出す問題をしぼる
   const sets  = confuseSetsFor(B.foe);
-  const kinds = ['read', 'write'];
-  if (sets.length) kinds.push('mikake');
+  const kinds = [];
+  if (B.style !== 'write'){
+    kinds.push('read');
+    if (sets.length) kinds.push('mikake');     // みわけは「よみ」のなかま
+  }
+  if (B.style !== 'read') kinds.push('write');
+  if (!kinds.length) kinds.push('read');
   B.turn = kinds[Math.floor(Math.random() * kinds.length)];
 
   if (B.turn === 'mikake'){
@@ -1853,13 +2012,13 @@ function battleMwPick(c, btn){
   const right = $('mw-choices').querySelector('[data-char="' + B.char + '"]');
   if (c === B.char){
     btn.classList.add('right');
-    damage(1, 'そう！ こうげき！');
+    hitFoe(1, 'そう！ こうげき！', false);
     afterTurn();
     return;
   }
   btn.classList.add('wrong');
   right.classList.add('right');
-  bmsg('soft', 'こっちだよ');
+  missFoe('soft', 'こっちだよ');
   animateStrokes(right.querySelector('svg'), 520);
   afterTurn(3200);                        // 書いて見せるあいだ待つ
 }
@@ -1881,7 +2040,7 @@ async function readTurn(){
   if (!B.running) return;
 
   if (hit === 'crit'){
-    damage(2, 'はやい！ かいしんの いちげき！');
+    hitFoe(2, 'はやい！ かいしんの いちげき！', true);
     disarm();
     await speak(B.char);
     return afterTurn();
@@ -1900,8 +2059,8 @@ async function readTurn(){
   if (!B.running) return;
   disarm();
 
-  if (hit === 'ok') damage(1, 'よめた！ こうげき！');
-  else              bmsg('soft', 'つぎ いこう');
+  if (hit === 'ok') hitFoe(1, 'よめた！ こうげき！', false);
+  else              missFoe('soft', 'つぎ いこう');
   afterTurn();
 }
 
@@ -1916,8 +2075,8 @@ function writeTurn(){
   B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 350);
   W.onDone = () => {
     if (!B.running) return;
-    if (W.miss === 0) damage(2, 'きれいに かけた！ かいしんの いちげき！');
-    else              damage(1, 'かけた！ こうげき！');
+    if (W.miss === 0) hitFoe(2, 'きれいに かけた！ かいしんの いちげき！', true);
+    else              hitFoe(1, 'かけた！ こうげき！', false);
     afterTurn();
   };
   setStep('solo');
@@ -1945,8 +2104,11 @@ function victory(){
   clearTurn();
   $('b-help').style.display = 'none';
   $('foehp').style.width = '0%';
+  $('b-combo').classList.remove('on');
+  paintLv();
   bmsg('crit', f.name + 'を たおした！');
   speak('やったね');
+  if (ups){ showLevelUp(B.lv); sfxLevel(); } else sfxWin();
 
   const lines = document.createElement('div');
   lines.className = 'note';
@@ -1979,12 +2141,36 @@ $('btn-b-again').onclick = () => {
 };
 $('btn-b-hint').onclick  = showHint;
 
+/** レベルアップの帯を出す */
+function showLevelUp(lv){
+  const d = document.createElement('div');
+  d.className = 'levelup';
+  d.textContent = 'レベル ' + lv + ' に なった！';
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 2500);
+}
+
 /* タップで戦う(マイクが使えないとき) */
 $('b-read').addEventListener('pointerdown', () => {
   if (B.running && !S.useMic) fireKey();
 });
 
 /* ---------- ボタン ---------- */
+function setStyle(s){
+  B.style = s;
+  $('tab-mix').classList.toggle('sel', s === 'mix');
+  $('tab-read').classList.toggle('sel', s === 'read');
+  $('tab-writeonly').classList.toggle('sel', s === 'write');
+}
+$('tab-mix').onclick       = () => setStyle('mix');
+$('tab-read').onclick      = () => setStyle('read');
+$('tab-writeonly').onclick = () => setStyle('write');
+$('chk-sound').onchange = e => {
+  B.sound = e.target.checked;
+  saveRpg();
+  if (B.sound){ sfxInit(); sfxHit(); }      // 入れた瞬間に音を確かめられる
+};
+
 $('btn-mode-battle').onclick = () => { renderPick(); show('battlepick'); };
 $('btn-battle-back').onclick = () => show('home');
 $('btn-battle-quit').onclick = () => { endBattle(); renderPick(); show('battlepick'); };
