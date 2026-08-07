@@ -197,7 +197,7 @@
   .foecard{display:flex;align-items:center;gap:14px;text-align:left;
     background:var(--card);color:var(--fg);border:2px solid var(--line);
     box-shadow:none;padding:12px 16px;min-height:0;font-size:1.05rem;}
-  .foecard svg{width:56px;height:56px;flex:0 0 56px;}
+  .foecard img{width:56px;height:56px;flex:0 0 56px;image-rendering:pixelated;}
   .foecard .fname{display:block;}
   .foecard .fsub{display:block;font-size:.78rem;color:var(--sub);letter-spacing:.04em;}
   .foecard.locked{opacity:.5;}
@@ -210,12 +210,16 @@
     padding:16px 12px 10px;border-radius:26px;overflow:hidden;
     background:linear-gradient(180deg,var(--stage1) 0%,var(--stage1) 62%,var(--stage2) 62%,var(--stage2) 100%);
     border:2px solid var(--line);}
+  /* 地面もドット絵のタイルを敷く */
+  .ground{position:absolute;left:0;right:0;bottom:0;height:38%;
+    background-repeat:repeat;background-size:34px 34px;image-rendering:pixelated;
+    opacity:.85;pointer-events:none;}
   .stage.shake{animation:shake .34s ease-in-out;}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}
     50%{transform:translateX(6px)}80%{transform:translateX(-4px)}}
   @keyframes enter{0%{opacity:0;transform:translateY(-26px) scale(.7)}
     70%{opacity:1;transform:translateY(4px) scale(1.05)}100%{transform:translateY(0) scale(1)}}
-  .foe.enter svg{animation:enter .62s ease-out;}
+  .foe.enter img{animation:enter .62s ease-out;}
 
   /* ダメージの数字が飛ぶ */
   .dmg{position:absolute;left:50%;top:26%;font-size:2.3rem;font-weight:bold;
@@ -245,17 +249,19 @@
     80%{opacity:1}100%{opacity:0}}
 
   @media (prefers-reduced-motion:reduce){
-    .stage.shake,.foe.enter svg,.dmg,.levelup{animation:none;}
+    .stage.shake,.foe.enter img,.foe.idle img,.dmg,.levelup{animation:none;}
     .dmg{opacity:1;}
   }
 
-  .foe{width:min(190px,46vw);margin:2px auto 0;}
-  .foe svg{width:100%;height:auto;display:block;}
+  .foe{width:min(190px,46vw);margin:2px auto 0;position:relative;z-index:1;}
+  /* ドット絵なので、拡大してもぼかさない */
+  .foe img{width:100%;height:auto;display:block;image-rendering:pixelated;
+    filter:drop-shadow(0 4px 0 rgba(0,0,0,.18));}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
   @keyframes hit{0%,100%{transform:translateX(0)}25%{transform:translateX(-9px)}
     75%{transform:translateX(9px)}}
-  .foe.idle svg{animation:bob 2.4s ease-in-out infinite;}
-  .foe.hit svg{animation:hit .32s ease-in-out;}
+  .foe.idle img{animation:bob 2.4s ease-in-out infinite;}
+  .foe.hit img{animation:hit .32s ease-in-out;}
   @media (prefers-reduced-motion:reduce){
     .foe.idle svg,.foe.hit svg{animation:none;}
   }
@@ -497,6 +503,7 @@
   <div class="topbar"><button class="ghost" id="btn-battle-quit">にげる</button></div>
 
   <div class="stage" id="stage">
+    <div class="ground" id="ground"></div>
     <div class="combo" id="b-combo"></div>
     <div class="foe idle" id="foe"></div>
     <p class="barlabel" id="foename"></p>
@@ -763,6 +770,20 @@ const KANA_STROKES = {
   "ヹ": ["M30.87,28.32c2.62,2.18,5.86,2.38,8.75,1.98c12.12-1.68,19.01-2.14,31.75-3.93c3.73-0.52,6.93,2.16,3,6c-5.75,5.63-14.63,13.63-16.63,15.25","M52.83,47.12c1.08,1.48,1.3,2.96,1.21,4.71c-0.54,11.29-0.67,15.08-0.81,21.54","M16,76.23c2.54,1.09,5.3,1.98,8.75,1.55c21.5-2.66,36.66-3.44,56.57-3.59c4.83-0.04,8.88,0.62,12.18,2.02","M81.62,16.88c2.61,1.93,5.7,5.93,7.36,9.37","M87.68,11.75c2.82,1.78,6.15,5.48,7.94,8.66"],
   "ヺ": ["M30.24,25.14c2.38,1.7,5.11,2.13,9.25,1.7c12.32-1.29,21.94-2.6,30.48-3.64c2.81-0.34,5.51-0.65,8.14-0.93","M29,46.69c2.25,1.44,4.44,1.9,8.05,1.4c8.19-1.15,19.93-2.64,28.56-3.79c2.38-0.31,4.65-0.62,6.75-0.92","M78,22.88c0.88,2,0.62,4.64,0.12,7c-4.88,22.5-23.5,47.12-44.12,60.74","M83.62,12.88c2.61,1.93,5.7,5.93,7.36,9.37","M89.68,7.75c2.82,1.78,6.15,5.48,7.94,8.66"],
   "ー": ["M14.5,53c5.75-0.75,11.62-0.95,14.5-1c21.62-0.38,40.75-1.62,45.38-1.62c4.63,0,16.75-0.62,20.12-0.62"]
+};
+
+</script>
+<script>
+/* ドット絵は Kenney「Tiny Dungeon」より。CC0(パブリックドメイン)。https://kenney.nl/assets/tiny-dungeon */
+const SPRITES = {
+  slime: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAA9QTFRFAAAAaf/UJZVqQ+GzPyYxGHw1NQAAAAF0Uk5TAEDm2GYAAABMSURBVAjXbY3BDcAwCAPzYAFmYAPwAJXs/WdqIH20Uv06WWdY6ycmXQPaOYX7VEZ3HKgaEAm0pCBS7UZVbtsYYOIN6lUfMlU9P765AeEkDwN2VLJrAAAAAElFTkSuQmCC',
+  bat: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABJQTFRFAAAA////djs26qVsvWxKPyYx6WRJ7QAAAAF0Uk5TAEDm2GYAAABPSURBVAjXY2DAAlhDQwNAdCgYgPmmwSCx0JBQZ5NQ11CGUBcnY2MVFzBD2BDCMDE2dgYzXI2NQ0AMU1MXl+DgUJAxIO2hIHNAIADJCnQAAJTgF8d0GdQlAAAAAElFTkSuQmCC',
+  ghost: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAABGdBTUEAALGPC/xhBQAAAAxQTFRFAAAAi5u0wMvcPyYxKaGK/AAAAAF0Uk5TAEDm2GYAAABPSURBVAjXY2AAg///GRiY//8/wMB/a/kHBv6slUBi1SogsX4flLBfteoPw//Vv/4z/F796z3Dr+yd6xl+Za0EEq9Wr2f49zV8P4P9q/V/AJcrKOLbimK6AAAAAElFTkSuQmCC',
+  spike: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABtQTFRFAAAA////6qVsUmB8djs2i5u0wMvcvWxKPyYxDvufLAAAAAF0Uk5TAEDm2GYAAABrSURBVAjXLYyxDYAwDARdegNGYATYgEyAWIDILQHJlJGA8GPzAVyd7+0XhQIZWfCPYII7LkLsUrtGgp2pDYWA0z3Um7FzX+caHdvQ18imYbteMPfyQbO8ALv3wi9lNYuzCLgaRKg4FFRZKR4R4TZTX/aSZAAAAABJRU5ErkJggg==',
+  mole: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABhQTFRFAAAAJitEdjs2////4ZplvWxK98KCPyYxLIt81AAAAAF0Uk5TAEDm2GYAAABhSURBVAjXJcuxDYAwEAPA7xggG1DAIigLoCc9kE8bISVen3fi6mTZIgKPeBaiOtDMEiucZnnAPBPHESeeMJv4hBd8d46roKvqVeCTDPAGi6u9A/3eCqGf6q5sWmqJDQjgByPAK1mAzG9+AAAAAElFTkSuQmCC',
+  dragon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAB5QTFRFAAAAqrfM6EU3i5u0djs298KC6qVswMvcvWxKPyYxmozc2AAAAAF0Uk5TAEDm2GYAAABkSURBVAjXTc2xEYAwCAXQtGyiG+gIDpAVvLO0Ik4gdClyyt9WSBp/9Q4OfkoE1BQBhggiQMDaEMFE1Jdku0cdjwJ2xCSgHTOmQNOXbYt/umLxK2RhLhk/iDFf0nGf6vBSLl7xAcJoOIwl8JTnAAAAAElFTkSuQmCC',
+  floor: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAB1JREFUOI1jfLU05z8DBYCJEs2jBowaMGrAYDIAAFXwAxr14JwoAAAAAElFTkSuQmCC',
+  chest: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABtQTFRFAAAAJitE6qVsWmmIi5u0djs2vWxKwMvcPyYxuukpbQAAAAF0Uk5TAEDm2GYAAABUSURBVAjXY2DAABwdYNDA0AEFDB0pbmlpKW5ARnqRkpJ6GVikvBwsUl5cKG5ejsyI6Cgv72gFM4AAxMgAMdqAjDQwADJMQ4EgGMgoAwmkg7SDQQcAHgYxeuHuWg8AAAAASUVORK5CYII=',
 };
 
 </script>
@@ -1662,9 +1683,9 @@ const FOES = [
   { id:'slime',  name:'もじスライム',   hp:6,  exp:15, color:'#7FBF95', kind:'slime',  set:'hira',      about:'ひらがな' },
   { id:'bat',    name:'カナコウモリ',   hp:8,  exp:24, color:'#9B8FD0', kind:'bat',    set:'kata',      about:'カタカナ' },
   { id:'ghost',  name:'まよいオバケ',   hp:10, exp:36, color:'#79AFD6', kind:'ghost',  set:'both',      about:'ひらがな＋カタカナ' },
-  { id:'spike',  name:'テンテンだま',   hp:12, exp:50, color:'#E0A05C', kind:'spike',  set:'hiraExtra', about:'だくおん・小さい字も' },
-  { id:'mole',   name:'ことばモグラ',   hp:13, exp:60, color:'#C08F63', kind:'mole',   set:'hira',      about:'ことばを まとめて よむ', words:true },
-  { id:'dragon', name:'ふでりゅう',     hp:15, exp:80, color:'#D98A8A', kind:'dragon', set:'all',       about:'ぜんぶ' },
+  { id:'spike',  name:'だくてんグモ',   hp:12, exp:50, color:'#E0A05C', kind:'spike',  set:'hiraExtra', about:'だくおん・小さい字も' },
+  { id:'mole',   name:'ことばオーガ',   hp:13, exp:60, color:'#C08F63', kind:'mole',   set:'hira',      about:'ことばを まとめて よむ', words:true },
+  { id:'dragon', name:'アカメの まもの', hp:15, exp:80, color:'#D98A8A', kind:'dragon', set:'all',       about:'ぜんぶ' },
 ];
 
 const B = {
@@ -1724,47 +1745,11 @@ function saveRpg(){
   } catch(e){}
 }
 
-/* ---------- 敵の絵 ---------- */
-function foeSvg(f){
-  const c = f.color;
-  const ink = 'rgba(0,0,0,.6)';
-  const eye = (x, y, r) =>
-    `<circle cx="${x}" cy="${y}" r="${r}" fill="${ink}"/>` +
-    `<circle cx="${x + r*0.35}" cy="${y - r*0.35}" r="${r*0.32}" fill="#fff"/>`;
-  const smile = (x, y, w) =>
-    `<path d="M${x-w},${y} q${w},${w*0.8} ${w*2},0" fill="none" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`;
-
-  const body = {
-    slime : `<path d="M10,84 C10,42 28,26 50,26 C72,26 90,42 90,84 Z" fill="${c}"/>
-             <ellipse cx="50" cy="84" rx="40" ry="6" fill="${c}"/>`,
-    bat   : `<path d="M50,40 L8,26 Q14,48 26,54 Z" fill="${c}"/>
-             <path d="M50,40 L92,26 Q86,48 74,54 Z" fill="${c}"/>
-             <ellipse cx="50" cy="58" rx="24" ry="26" fill="${c}"/>
-             <path d="M34,36 L40,20 L48,34 Z" fill="${c}"/>
-             <path d="M66,36 L60,20 L52,34 Z" fill="${c}"/>`,
-    ghost : `<path d="M18,86 L18,50 A32,32 0 0 1 82,50 L82,86 L71,76 L60,86 L50,76 L40,86 L29,76 Z" fill="${c}"/>`,
-    spike : `<path d="M50,10 L62,32 L86,26 L74,48 L92,64 L68,70 L64,92 L50,76 L36,92 L32,70 L8,64 L26,48 L14,26 L38,32 Z" fill="${c}"/>`,
-    mole  : `<path d="M22,40 L14,20 L34,32 Z" fill="${c}"/>
-             <path d="M78,40 L86,20 L66,32 Z" fill="${c}"/>
-             <ellipse cx="50" cy="60" rx="32" ry="30" fill="${c}"/>
-             <ellipse cx="50" cy="72" rx="13" ry="10" fill="rgba(0,0,0,.16)"/>`,
-    dragon: `<path d="M30,26 L22,8 L40,18 Z" fill="${c}"/>
-             <path d="M70,26 L78,8 L60,18 Z" fill="${c}"/>
-             <path d="M8,74 Q4,52 20,46 Z" fill="${c}"/>
-             <path d="M92,74 Q96,52 80,46 Z" fill="${c}"/>
-             <ellipse cx="50" cy="58" rx="34" ry="32" fill="${c}"/>`,
-  }[f.kind];
-
-  const face = {
-    slime : eye(38,58,6) + eye(62,58,6) + smile(50,72,9),
-    bat   : eye(41,56,5) + eye(59,56,5) + smile(50,68,7),
-    ghost : eye(39,52,6) + eye(61,52,6) + smile(50,66,8),
-    spike : eye(42,48,5) + eye(58,48,5) + smile(50,60,7),
-    mole  : eye(40,52,5) + eye(60,52,5) + smile(50,66,7),
-    dragon: eye(39,54,7) + eye(61,54,7) + smile(50,70,10),
-  }[f.kind];
-
-  return `<svg viewBox="0 0 100 100" role="img" aria-label="${f.name}">${body}${face}</svg>`;
+/* ---------- 敵の絵 ----------
+   ドット絵は Kenney「Tiny Dungeon」(CC0)。16×16 なので拡大してもごく軽い */
+function foeArt(f){
+  const src = SPRITES[f.kind] || SPRITES.slime;
+  return '<img src="' + src + '" alt="' + f.name + '">';
 }
 
 /* ---------- 出題する文字 ---------- */
@@ -1795,7 +1780,7 @@ function renderPick(){
     const open = i === 0 || B.beaten[FOES[i-1].id];
     const b = document.createElement('button');
     b.className = 'foecard' + (open ? '' : ' locked') + (B.beaten[f.id] ? ' beaten' : '');
-    b.innerHTML = foeSvg(f) +
+    b.innerHTML = foeArt(f) +
       `<span><span class="fname">${open ? f.name : '？？？'}</span>` +
       `<span class="fsub">${open ? f.about + ' ／ HP ' + f.hp : 'まえの てきを たおすと あらわれる'}</span></span>`;
     if (open) b.onclick = () => startBattle(f);
@@ -1874,7 +1859,8 @@ async function startBattle(f){
   fbTarget = 'b-msg';
   W.onDone = null;
 
-  $('foe').innerHTML = foeSvg(f);
+  $('foe').innerHTML = foeArt(f);
+  $('ground').style.backgroundImage = 'url(' + SPRITES.floor + ')';
   $('b-buttons').innerHTML = '';
   $('b-help').style.display = '';
   paintHp();
@@ -2105,6 +2091,7 @@ function victory(){
   $('b-help').style.display = 'none';
   $('foehp').style.width = '0%';
   $('b-combo').classList.remove('on');
+  $('foe').innerHTML = '<img src="' + SPRITES.chest + '" alt="たからばこ">';   // 倒すと宝箱
   paintLv();
   bmsg('crit', f.name + 'を たおした！');
   speak('やったね');
