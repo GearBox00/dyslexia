@@ -277,6 +277,13 @@
   @media (prefers-reduced-motion:reduce){
     .foe.idle svg,.foe.hit svg{animation:none;}
   }
+  /* 敵の名前とHPは、後ろが空でも地面でも読めるよう暗い帯の上に置く */
+  .foestatus{position:relative;z-index:2;margin:8px auto 0;width:min(330px,88%);
+    background:rgba(20,16,14,.62);border-radius:14px;padding:6px 10px 8px;
+    backdrop-filter:blur(2px);}
+  .foestatus .barlabel{color:#F3ECDF;margin:0 0 2px;text-shadow:0 1px 2px rgba(0,0,0,.6);}
+  .foestatus .bar{margin:0 auto;}
+
   /* HPバーは背景に溶けないよう、暗い受け皿＋枠をつけて色で役割を分ける */
   .bar{width:min(320px,84vw);height:18px;border-radius:10px;
     background:#3A3430;border:2px solid #24201D;
@@ -532,8 +539,10 @@
     <div class="ground" id="ground"></div>
     <div class="combo" id="b-combo"></div>
     <div class="foe idle" id="foe"></div>
-    <p class="barlabel" id="foename"></p>
-    <div class="bar foehp"><i id="foehp"></i></div>
+    <div class="foestatus">
+      <p class="barlabel" id="foename"></p>
+      <div class="bar foehp"><i id="foehp"></i></div>
+    </div>
   </div>
 
   <p class="barlabel" id="myname"></p>
