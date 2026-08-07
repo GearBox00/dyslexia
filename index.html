@@ -214,7 +214,7 @@
   .ground{position:absolute;left:0;right:0;bottom:0;height:38%;
     background-repeat:repeat;background-size:34px 34px;image-rendering:pixelated;
     opacity:.85;pointer-events:none;}
-  .stage.shake{animation:shake .34s ease-in-out;}
+  .stage.shake,.bar.shake{animation:shake .34s ease-in-out;}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}
     50%{transform:translateX(6px)}80%{transform:translateX(-4px)}}
   @keyframes enter{0%{opacity:0;transform:translateY(-26px) scale(.7)}
@@ -235,6 +235,18 @@
     color:#fff;background:var(--soft);border-radius:999px;padding:4px 12px;
     opacity:0;transition:opacity .25s;}
   .combo.on{opacity:1;}
+
+  /* そうび */
+  .gear{display:flex;gap:10px;flex-wrap:wrap;}
+  .gear button{display:flex;flex-direction:column;align-items:center;gap:2px;
+    background:var(--card);color:var(--fg);border:3px solid var(--line);box-shadow:none;
+    border-radius:14px;padding:8px 6px 6px;min-height:0;min-width:74px;font-size:.72rem;
+    letter-spacing:.02em;}
+  .gear button img{width:34px;height:34px;image-rendering:pixelated;}
+  .gear button.on{border-color:var(--good);background:var(--warnbg);}
+  .gear button[disabled]{opacity:.35;}
+  .gear .val{font-size:.72rem;color:var(--sub);}
+  .gotover{font-size:1.5rem;letter-spacing:.1em;color:var(--soft);}
 
   .lvrow{display:flex;align-items:center;justify-content:center;gap:10px;
     font-size:.85rem;color:var(--sub);letter-spacing:.06em;}
@@ -265,11 +277,16 @@
   @media (prefers-reduced-motion:reduce){
     .foe.idle svg,.foe.hit svg{animation:none;}
   }
-  .bar{width:min(320px,84vw);height:16px;border-radius:10px;background:var(--meter);
-    overflow:hidden;margin:8px auto 2px;}
-  .bar i{display:block;height:100%;background:var(--good);transition:width .35s ease;}
-  .bar.exp{height:10px;}
-  .bar.exp i{background:var(--accent);}
+  /* HPバーは背景に溶けないよう、暗い受け皿＋枠をつけて色で役割を分ける */
+  .bar{width:min(320px,84vw);height:18px;border-radius:10px;
+    background:#3A3430;border:2px solid #24201D;
+    overflow:hidden;margin:8px auto 2px;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}
+  .bar i{display:block;height:100%;transition:width .35s ease;}
+  .bar.foehp i{background:linear-gradient(180deg,#F07167 0%,#D9382B 100%);}   /* 敵＝赤 */
+  .bar.myhp  i{background:linear-gradient(180deg,#6FD69B 0%,#2E9E6B 100%);}   /* 自分＝緑 */
+  .bar.exp{height:11px;}
+  .bar.exp i{background:linear-gradient(180deg,#8FC2EA 0%,#3B82C4 100%);}     /* 経験値＝青 */
+  .bar.low i{background:linear-gradient(180deg,#FFD37A 0%,#E8A020 100%);}     /* 残りわずか */
   .barlabel{font-size:.8rem;color:var(--sub);font-variant-numeric:tabular-nums;}
   .bglyph{font-size:clamp(6rem,30vw,11rem);line-height:1.05;letter-spacing:0;
     min-height:1.1em;user-select:none;}
@@ -490,6 +507,15 @@
     <span>おとを ならす</span>
   </label>
 
+  <div class="card">
+    <h2>そうび</h2>
+    <p class="subhead" style="margin:0 0 6px">ぶき ／ こうげき力</p>
+    <div class="gear" id="gear-weapon"></div>
+    <p class="subhead" style="margin:14px 0 6px">まもり ／ さいだいHP</p>
+    <div class="gear" id="gear-armor"></div>
+    <p class="note" id="gear-sum" style="margin:10px 0 0"></p>
+  </div>
+
   <div class="foelist" id="foelist"></div>
 
   <div class="btnrow" style="margin-top:16px">
@@ -507,8 +533,11 @@
     <div class="combo" id="b-combo"></div>
     <div class="foe idle" id="foe"></div>
     <p class="barlabel" id="foename"></p>
-    <div class="bar"><i id="foehp"></i></div>
+    <div class="bar foehp"><i id="foehp"></i></div>
   </div>
+
+  <p class="barlabel" id="myname"></p>
+  <div class="bar myhp" id="myhpbar"><i id="myhp"></i></div>
 
   <div class="lvrow">
     <span class="lvbadge" id="b-lv"></span>
@@ -784,6 +813,14 @@ const SPRITES = {
   dragon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAB5QTFRFAAAAqrfM6EU3i5u0djs298KC6qVswMvcvWxKPyYxmozc2AAAAAF0Uk5TAEDm2GYAAABkSURBVAjXTc2xEYAwCAXQtGyiG+gIDpAVvLO0Ik4gdClyyt9WSBp/9Q4OfkoE1BQBhggiQMDaEMFE1Jdku0cdjwJ2xCSgHTOmQNOXbYt/umLxK2RhLhk/iDFf0nGf6vBSLl7xAcJoOIwl8JTnAAAAAElFTkSuQmCC',
   floor: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAB1JREFUOI1jfLU05z8DBYCJEs2jBowaMGrAYDIAAFXwAxr14JwoAAAAAElFTkSuQmCC',
   chest: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABtQTFRFAAAAJitE6qVsWmmIi5u0djs2vWxKwMvcPyYxuukpbQAAAAF0Uk5TAEDm2GYAAABUSURBVAjXY2DAABwdYNDA0AEFDB0pbmlpKW5ARnqRkpJ6GVikvBwsUl5cKG5ejsyI6Cgv72gFM4AAxMgAMdqAjDQwADJMQ4EgGMgoAwmkg7SDQQcAHgYxeuHuWg8AAAAASUVORK5CYII=',
+  w1: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAA9QTFRFAAAAi5u0vWxKwMvcPyYxo/wp1QAAAAF0Uk5TAEDm2GYAAAAzSURBVAjXY2DABlhcoAwXFweogAmU4UyY4eIoAtHvYmwMZTipQBgsTiowA6EmA61AthkAZQIJcPsAuGYAAAAASUVORK5CYII=',
+  w2: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAA9QTFRFAAAAi5u0vWxKwMvcPyYxo/wp1QAAAAF0Uk5TAEDm2GYAAAA1SURBVAjXY2BgYGBxYYAAFxcHMM3iYgJlOFPEcHEUgRjtYmwMZTipQBgsTiowu6CWAm0HEgAihguh21ObkAAAAABJRU5ErkJggg==',
+  w3: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAA9QTFRFAAAAvWxKi5u0wMvcPyYxalGRewAAAAF0Uk5TAEDm2GYAAAAzSURBVAjXY2BgYHBxYQADFhcXBzDDxckEIuSiZEwRw0kFyjCGiTiKQBgsjiIOqJZCnAEAuIANBNNmZdIAAAAASUVORK5CYII=',
+  a1: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABhQTFRFAAAAi5u0wMvc6qVsvWxKQ+GzJZVqPyYxoj3kbwAAAAF0Uk5TAEDm2GYAAAA8SURBVAjXY2DAAtjLywvAjHIggDCcTdAZheJQRpF6OURTaChYG3tZaGg6hJGWhsYoT0uDGA03GW4XBAAAvBEWyBnVqV8AAAAASUVORK5CYII=',
+  a2: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABhQTFRFAAAAi5u0wMvcvWxK6qVs/3Bt6EU3PyYxs4T0bwAAAAF0Uk5TAEDm2GYAAAA8SURBVAjXY2DAAtjLywvAjHIggDBMnNEZheJQRpF6OURTaChYG3tZaGg6hJGWhsYoT0uDGA03GW4XBAAAu/MWyHy8dtcAAAAASUVORK5CYII=',
+  a3: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABhQTFRFAAAAi5u0wMvcvWxK6qVsdeP/AJnbPyYxsxxfjgAAAAF0Uk5TAEDm2GYAAAA8SURBVAjXY2DAAtjLywvAjHIggDBMnNEZheJQRpF6OURTaChYG3tZaGg6hJGWhsYoT0uDGA03GW4XBAAAu/MWyHy8dtcAAAAASUVORK5CYII=',
+  hand: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAA9QTFRFAAAAi5u0vWxKwMvcPyYxo/wp1QAAAAF0Uk5TAEDm2GYAAAAuSURBVAjXY2DAB1yAAESzgBgOIIajsbEImOGspGQCYSgboTNgUnDFMO1wA3ECAAz/CuXOW7hhAAAAAElFTkSuQmCC',
+  cloth: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABJQTFRFAAAA6qVsvWxKwMvci5u0PyYx4pm7/gAAAAF0Uk5TAEDm2GYAAAA8SURBVAjXY2DAAlhDQwPAjFAggDAUhdAZIa5QRrBpKESTsTFYG2uIsbErhOHigsYIdXGBGA03GW4XBAAACBsQAteM20MAAAAASUVORK5CYII=',
 };
 
 </script>
@@ -1680,13 +1717,26 @@ loadDone();
 const LS_RPG = 'dyslexia-p0-rpg-v1';
 
 const FOES = [
-  { id:'slime',  name:'もじスライム',   hp:6,  exp:15, color:'#7FBF95', kind:'slime',  set:'hira',      about:'ひらがな' },
-  { id:'bat',    name:'カナコウモリ',   hp:8,  exp:24, color:'#9B8FD0', kind:'bat',    set:'kata',      about:'カタカナ' },
-  { id:'ghost',  name:'まよいオバケ',   hp:10, exp:36, color:'#79AFD6', kind:'ghost',  set:'both',      about:'ひらがな＋カタカナ' },
-  { id:'spike',  name:'だくてんグモ',   hp:12, exp:50, color:'#E0A05C', kind:'spike',  set:'hiraExtra', about:'だくおん・小さい字も' },
-  { id:'mole',   name:'ことばオーガ',   hp:13, exp:60, color:'#C08F63', kind:'mole',   set:'hira',      about:'ことばを まとめて よむ', words:true },
-  { id:'dragon', name:'アカメの まもの', hp:15, exp:80, color:'#D98A8A', kind:'dragon', set:'all',       about:'ぜんぶ' },
+  { id:'slime',  name:'もじスライム',   hp:8,  exp:15, kind:'slime',  set:'hira',      about:'ひらがな',            drop:'w1' },
+  { id:'bat',    name:'カナコウモリ',   hp:12, exp:24, kind:'bat',    set:'kata',      about:'カタカナ',            drop:'a1' },
+  { id:'ghost',  name:'まよいオバケ',   hp:16, exp:36, kind:'ghost',  set:'both',      about:'ひらがな＋カタカナ',  drop:'w2' },
+  { id:'spike',  name:'だくてんグモ',   hp:20, exp:50, kind:'spike',  set:'hiraExtra', about:'だくおん・小さい字も', drop:'a2' },
+  { id:'mole',   name:'ことばオーガ',   hp:24, exp:60, kind:'mole',   set:'hira',      about:'ことばを まとめて よむ', words:true, drop:'w3' },
+  { id:'dragon', name:'アカメの まもの', hp:30, exp:80, kind:'dragon', set:'all',       about:'ぜんぶ',              drop:'a3' },
 ];
+
+/* そうび。この作品には防具の絵が無いので、まもりは「くすり」の絵で表している */
+const BASE_HP = 5;
+const ITEMS = {
+  hand:  { name:'すで',           kind:'weapon', v:0, art:'hand'  },
+  w1:    { name:'たんけん',       kind:'weapon', v:1, art:'w1'    },
+  w2:    { name:'つるぎ',         kind:'weapon', v:2, art:'w2'    },
+  w3:    { name:'だいけん',       kind:'weapon', v:3, art:'w3'    },
+  cloth: { name:'ふつうの ふく',  kind:'armor',  v:0, art:'cloth' },
+  a1:    { name:'みどりの くすり', kind:'armor', v:2, art:'a1'    },
+  a2:    { name:'あかい くすり',   kind:'armor', v:4, art:'a2'    },
+  a3:    { name:'あおい くすり',   kind:'armor', v:6, art:'a3'    },
+};
 
 const B = {
   running:false, busy:false, foe:null, hp:0, turn:'', char:'',
@@ -1694,7 +1744,13 @@ const B = {
   style:'mix',    // ぜんぶ / よみだけ / かきだけ
   combo:0,        // 連続で当てた数
   sound:true,
+  php:0,          // 自分のHP
+  items:{ hand:true, cloth:true },   // 持っているそうび
+  weapon:'hand', armor:'cloth',
 };
+
+const atkOf  = () => (ITEMS[B.weapon] || ITEMS.hand).v;
+const maxHp  = () => BASE_HP + (ITEMS[B.armor] || ITEMS.cloth).v;
 
 function needExp(lv){ return 20 + (lv - 1) * 15; }
 
@@ -1729,6 +1785,8 @@ const sfxCrit  = () => [523,659,784,1047].forEach((f,i) => beep(f, i*.055, .2, '
 const sfxWin   = () => [659,784,988,1319].forEach((f,i) => beep(f, i*.11, .38, 'triangle', .15));
 const sfxLevel = () => [523,659,784,1047,1319].forEach((f,i) => beep(f, i*.085, .34, 'triangle', .16));
 const sfxAppear= () => { beep(220, 0, .18, 'sawtooth', .1); beep(165, .12, .26, 'sawtooth', .09); };
+// 力つきたときの音。責める音にはせず、やわらかく下がるだけにする
+const sfxDown  = () => [392,330,262].forEach((f,i) => beep(f, i*.16, .4, 'triangle', .1));
 
 function loadRpg(){
   let s = {};
@@ -1737,11 +1795,15 @@ function loadRpg(){
   B.exp    = s.exp >= 0 ? s.exp : 0;
   B.beaten = s.beaten || {};
   B.sound  = s.sound !== false;
+  B.items  = Object.assign({ hand:true, cloth:true }, s.items || {});
+  B.weapon = (s.weapon && B.items[s.weapon]) ? s.weapon : 'hand';
+  B.armor  = (s.armor  && B.items[s.armor])  ? s.armor  : 'cloth';
 }
 function saveRpg(){
   try {
-    localStorage.setItem(LS_RPG, JSON.stringify(
-      { lv:B.lv, exp:B.exp, beaten:B.beaten, sound:B.sound }));
+    localStorage.setItem(LS_RPG, JSON.stringify({
+      lv:B.lv, exp:B.exp, beaten:B.beaten, sound:B.sound,
+      items:B.items, weapon:B.weapon, armor:B.armor }));
   } catch(e){}
 }
 
@@ -1774,6 +1836,8 @@ function renderPick(){
   $('expbar').style.width = Math.min(100, B.exp / need * 100) + '%';
   $('explabel').textContent = 'つぎのレベルまで あと ' + Math.max(0, need - B.exp);
 
+  renderGear();
+
   const list = $('foelist');
   list.innerHTML = '';
   FOES.forEach((f, i) => {
@@ -1787,6 +1851,36 @@ function renderPick(){
     else b.disabled = true;
     list.appendChild(b);
   });
+}
+
+/** そうびの一覧。持っているものだけ選べる */
+function renderGear(){
+  const build = (kind, slotId, cur) => {
+    const box = $(slotId);
+    box.innerHTML = '';
+    Object.keys(ITEMS).filter(k => ITEMS[k].kind === kind).forEach(k => {
+      const it = ITEMS[k];
+      const have = !!B.items[k];
+      const b = document.createElement('button');
+      b.className = (k === cur ? 'on' : '');
+      b.disabled = !have;
+      b.innerHTML = '<img src="' + SPRITES[it.art] + '" alt="">' +
+        '<span>' + (have ? it.name : '？？？') + '</span>' +
+        '<span class="val">' + (have ? '+' + it.v : '—') + '</span>';
+      if (have) b.onclick = () => {
+        if (kind === 'weapon') B.weapon = k; else B.armor = k;
+        saveRpg();
+        renderGear();
+        sfxInit(); sfxHit();
+      };
+      box.appendChild(b);
+    });
+  };
+  build('weapon', 'gear-weapon', B.weapon);
+  build('armor',  'gear-armor',  B.armor);
+  $('gear-sum').textContent =
+    'いまの こうげき力 ' + (1 + atkOf()) + '〜' + (2 + atkOf()) +
+    ' ／ さいだいHP ' + maxHp() + '　（てきを たおすと 新しい そうびが 手に入ります）';
 }
 
 /* ---------- 戦闘 ---------- */
@@ -1804,6 +1898,7 @@ function showZone(which){
 /** 問題ごとに、前の問題の跡を消してまっさらにする */
 function clearTurn(){
   clearTimeout(W.hintTimer);
+  document.querySelectorAll('.b-extra').forEach(e => e.remove());   // 勝敗のときの説明行
   clearPad();                                   // 書いた線・お手本・画数の番号
   $('mw-choices').innerHTML = '';               // 選んだパネルの印
   $('b-glyph').textContent = '';
@@ -1831,6 +1926,13 @@ function paintLv(){
   $('b-lv').textContent = 'Lv ' + B.lv;
   $('b-exp').style.width = Math.min(100, B.exp / needExp(B.lv) * 100) + '%';
 }
+function paintMy(){
+  const m = maxHp();
+  $('myhp').style.width = Math.max(0, B.php / m * 100) + '%';
+  $('myhpbar').classList.toggle('low', B.php <= Math.max(1, Math.floor(m / 3)));
+  $('myname').textContent = 'じぶん  HP ' + Math.max(0, B.php) + ' / ' + m +
+    '  ／ こうげき力 ' + atkOf();
+}
 function paintCombo(){
   const c = $('b-combo');
   c.textContent = B.combo + ' れんぞく！';
@@ -1856,6 +1958,7 @@ async function startBattle(f){
   B.running = true;
   B.busy = false;
   B.combo = 0;
+  B.php = maxHp();
   fbTarget = 'b-msg';
   W.onDone = null;
 
@@ -1865,6 +1968,7 @@ async function startBattle(f){
   $('b-help').style.display = '';
   paintHp();
   paintLv();
+  paintMy();
   paintCombo();
   showZone('read');
   clearTurn();
@@ -1921,19 +2025,25 @@ function damage(n, label, crit){
   bmsg(crit ? 'crit' : '', label);
 }
 
-/** 当てたとき。3回つづけて当てるとボーナスが1つ増える */
+/** 当てたとき。こうげき力が乗る。3回つづけて当てるとボーナスが1つ増える */
 function hitFoe(base, label, crit){
   B.combo++;
   paintCombo();
-  let dmg = base, msg = label;
+  let dmg = base + atkOf(), msg = label;
   if (B.combo >= 3 && B.combo % 3 === 0){ dmg += 1; msg = label + ' ＋れんぞくボーナス！'; }
   damage(dmg, msg, !!crit);
 }
-/** 外したとき。ダメージは受けない。音も鳴らさない */
+/** 外したとき。自分のHPが1へる */
 function missFoe(kind, msg){
   B.combo = 0;
   paintCombo();
-  bmsg(kind, msg);
+  B.php -= 1;
+  paintMy();
+  $('myhpbar').classList.add('shake');
+  setTimeout(() => $('myhpbar').classList.remove('shake'), 340);
+  if (B.php <= 0){ bmsg(kind, msg); gameOver(); return true; }
+  bmsg(kind, msg + '（HP ' + B.php + '）');
+  return false;
 }
 
 function nextTurn(){
@@ -2084,6 +2194,17 @@ function victory(){
   let ups = 0;
   while (B.exp >= needExp(B.lv)){ B.exp -= needExp(B.lv); B.lv++; ups++; }
   B.beaten[f.id] = true;
+
+  // そうびを手に入れる。今のより強ければ、そのまま身につける
+  let got = null;
+  if (f.drop && !B.items[f.drop]){
+    B.items[f.drop] = true;
+    got = ITEMS[f.drop];
+    const now = got.kind === 'weapon' ? B.weapon : B.armor;
+    if (got.v > (ITEMS[now] || {v:0}).v){
+      if (got.kind === 'weapon') B.weapon = f.drop; else B.armor = f.drop;
+    }
+  }
   saveRpg();
 
   showZone('read');
@@ -2093,15 +2214,17 @@ function victory(){
   $('b-combo').classList.remove('on');
   $('foe').innerHTML = '<img src="' + SPRITES.chest + '" alt="たからばこ">';   // 倒すと宝箱
   paintLv();
+  paintMy();
   bmsg('crit', f.name + 'を たおした！');
   speak('やったね');
   if (ups){ showLevelUp(B.lv); sfxLevel(); } else sfxWin();
 
   const lines = document.createElement('div');
-  lines.className = 'note';
+  lines.className = 'note b-extra';
   lines.style.textAlign = 'center';
   lines.textContent = 'けいけんち ' + f.exp + ' を てにいれた' +
-    (ups ? ' ／ レベル ' + before + ' → ' + B.lv + ' に あがった！' : '');
+    (ups ? ' ／ レベル ' + before + ' → ' + B.lv + ' に あがった！' : '') +
+    (got ? ' ／ 「' + got.name + '」を てにいれた！' : '');
   $('b-msg').after(lines);
 
   const i = FOES.indexOf(f);
@@ -2110,13 +2233,47 @@ function victory(){
   if (i + 1 < FOES.length){
     const nb = document.createElement('button');
     nb.textContent = 'つぎの てきへ';
-    nb.onclick = () => { lines.remove(); startBattle(FOES[i + 1]); };
+    nb.onclick = () => startBattle(FOES[i + 1]);
     box.appendChild(nb);
   }
   const bb = document.createElement('button');
   bb.className = 'ghost';
   bb.textContent = 'もどる';
-  bb.onclick = () => { lines.remove(); renderPick(); show('battlepick'); };
+  bb.onclick = () => { renderPick(); show('battlepick'); };
+  box.appendChild(bb);
+}
+
+/** 力つきたとき。レベルもそうびも失わない */
+function gameOver(){
+  const f = B.foe;
+  endBattle();
+  saveRpg();
+  sfxDown();
+
+  showZone('read');
+  clearTurn();
+  $('b-help').style.display = 'none';
+  $('b-combo').classList.remove('on');
+  paintMy();
+  bmsg('soft', 'ちからつきた…');
+  speak('もういちど ちょうせん しよう');
+
+  const lines = document.createElement('div');
+  lines.className = 'note b-extra';
+  lines.style.textAlign = 'center';
+  lines.textContent = 'レベルも そうびも そのままです。なんどでも たたかえます。';
+  $('b-msg').after(lines);
+
+  const box = $('b-buttons');
+  box.innerHTML = '';
+  const again = document.createElement('button');
+  again.textContent = 'もういちど';
+  again.onclick = () => startBattle(f);
+  box.appendChild(again);
+  const bb = document.createElement('button');
+  bb.className = 'ghost';
+  bb.textContent = 'もどる';
+  bb.onclick = () => { renderPick(); show('battlepick'); };
   box.appendChild(bb);
 }
 
@@ -2163,6 +2320,7 @@ $('btn-battle-back').onclick = () => show('home');
 $('btn-battle-quit').onclick = () => { endBattle(); renderPick(); show('battlepick'); };
 $('btn-rpg-reset').onclick = () => {
   B.lv = 1; B.exp = 0; B.beaten = {};
+  B.items = { hand:true, cloth:true }; B.weapon = 'hand'; B.armor = 'cloth';
   saveRpg();
   renderPick();
   $('btn-rpg-reset').textContent = 'やりなおしました';
