@@ -298,6 +298,13 @@
   .bglyph{font-size:clamp(6rem,30vw,11rem);line-height:1.05;letter-spacing:0;
     min-height:1.1em;user-select:none;}
   .bglyph.word{font-size:clamp(2.2rem,11vw,4rem);letter-spacing:.06em;}
+  /* はやくち（RAN）: 並んだ字を続けて読む */
+  .ranrow{display:flex;gap:clamp(8px,4vw,22px);justify-content:center;flex-wrap:wrap;
+    margin:10px 0;min-height:1.3em;}
+  .ranrow span{font-size:clamp(2.1rem,10vw,3.4rem);line-height:1.15;letter-spacing:0;
+    color:var(--line);transition:color .15s ease, transform .15s ease;}
+  .ranrow span.now{color:var(--fg);}
+  .ranrow span.done{color:var(--good);transform:translateY(-8px);}
   .btask{font-size:.95rem;color:var(--sub);letter-spacing:.1em;min-height:1.6em;}
   /* ひらがな／カタカナ どちらで書くのかを、色でも見分けられるようにする */
   .kindchip{display:inline-block;padding:3px 12px;border-radius:999px;
@@ -557,6 +564,7 @@
 
   <div class="readzone" id="b-read">
     <div class="bglyph" id="b-glyph"></div>
+    <div class="ranrow" id="b-ran"></div>
   </div>
   <div id="battle-slot"></div>
 
@@ -959,6 +967,8 @@ const mic = {
   run:0,                // 連続でしきい値を超えたフレーム数
   peak:-100,            // 現在の試行中のピーク
   rafId:0,
+  multi:false,          // 続けて何回も拾うか(はやくち用)
+  lastOnset:0,
 };
 
 async function micStart(){
@@ -1018,11 +1028,18 @@ function loop(){
   if (db > th){
     mic.run++;
     if (mic.run >= 3 && mic.onOnset){   // 3フレーム連続 ≒ 50ms 続いたら発声とみなす
-      const cb = mic.onOnset;
-      mic.onOnset = null;
-      mic.listening = false;
-      mic.run = 0;
-      cb();
+      if (mic.multi){
+        // 続けて読む用。260msで切れ目をつけながら、聞き続ける
+        const now = performance.now();
+        if (now - mic.lastOnset > 260){ mic.lastOnset = now; mic.onOnset(); }
+        mic.run = 0;
+      } else {
+        const cb = mic.onOnset;
+        mic.onOnset = null;
+        mic.listening = false;
+        mic.run = 0;
+        cb();
+      }
     }
   } else {
     mic.run = 0;
@@ -1056,9 +1073,10 @@ function micStop(){
 }
 
 /* マイクなしモード: スペース/画面タップを発声とみなす */
-let keyOnset = null;
+let keyOnset = null, keyMulti = null;
 function armKey(cb){ keyOnset = cb; }
 function fireKey(){
+  if (keyMulti){ keyMulti(); return; }            // 続けて読むとき
   if (keyOnset){ const cb = keyOnset; keyOnset = null; cb(); }
 }
 window.addEventListener('keydown', e => {
@@ -1074,7 +1092,15 @@ function armListen(cb){
   else armKey(cb);
 }
 function disarm(){
-  mic.listening = false; mic.onOnset = null; keyOnset = null;
+  mic.listening = false; mic.onOnset = null; mic.multi = false;
+  keyOnset = null; keyMulti = null;
+}
+/** 続けて何回も声を拾う（はやくち用） */
+function armListenMulti(cb){
+  if (S.useMic){
+    mic.run = 0; mic.multi = true; mic.lastOnset = 0;
+    mic.onOnset = cb; mic.listening = true;
+  } else keyMulti = cb;
 }
 
 async function startSession(useMic){
@@ -1896,8 +1922,11 @@ function renderGear(){
 /* 戦闘では、よむ欄・書くパッド・選択パネルが同じ場所を使いまわす。
    使わない部品は必ず隠す(隠さないと前の問題のものが残って重なる) */
 function showZone(which){
-  $('b-read').style.display      = which === 'read'   ? '' : 'none';
-  $('battle-slot').style.display = which === 'read'   ? 'none' : '';
+  const reading = (which === 'read' || which === 'ran');
+  $('b-read').style.display      = reading            ? '' : 'none';
+  $('b-glyph').style.display     = which === 'read'   ? '' : 'none';
+  $('b-ran').style.display       = which === 'ran'    ? '' : 'none';
+  $('battle-slot').style.display = reading            ? 'none' : '';
   $('pad').style.display         = which === 'write'  ? '' : 'none';
   $('mw-choices').style.display  = which === 'mikake' ? '' : 'none';
   // お手本を見せられるのは、書くときだけ
@@ -1912,6 +1941,7 @@ function clearTurn(){
   $('mw-choices').innerHTML = '';               // 選んだパネルの印
   $('b-glyph').textContent = '';
   $('b-glyph').className = 'bglyph';
+  $('b-ran').innerHTML = '';
   $('b-task').textContent = '';
   bmsg('none', '');
 }
@@ -2042,7 +2072,17 @@ function hitFoe(base, label, crit){
   if (B.combo >= 3 && B.combo % 3 === 0){ dmg += 1; msg = label + ' ＋れんぞくボーナス！'; }
   damage(dmg, msg, !!crit);
 }
-/** 外したとき。自分のHPが1へる */
+/** 声が出なかった・間に合わなかったとき。
+    これは「まちがえた」ではないので HP は減らさない。
+    時間の圧力は疲労と自尊心の低下を招くという指摘があるため。 */
+function passTurn(msg){
+  B.combo = 0;
+  paintCombo();
+  bmsg('soft', msg);
+  return false;
+}
+
+/** はっきり まちがえたとき。自分のHPが1へる */
 function missFoe(kind, msg){
   B.combo = 0;
   paintCombo();
@@ -2066,11 +2106,14 @@ function nextTurn(){
   const kinds = [];
   if (B.style !== 'write'){
     kinds.push('read');
+    kinds.push('ran');                         // はやくち（続けて読む）
     if (sets.length) kinds.push('mikake');     // みわけは「よみ」のなかま
   }
   if (B.style !== 'read') kinds.push('write');
   if (!kinds.length) kinds.push('read');
   B.turn = kinds[Math.floor(Math.random() * kinds.length)];
+
+  if (B.turn === 'ran'){ ranTurn(); return; }
 
   if (B.turn === 'mikake'){
     B.mwSet = sets[Math.floor(Math.random() * sets.length)];
@@ -2088,6 +2131,77 @@ function nextTurn(){
   B.char = chars[Math.floor(Math.random() * chars.length)];
   if (B.turn === 'read') readTurn();
   else                   writeTurn();
+}
+
+/* はやくちターン（RAN・呼称速度）
+   並んだ字を"続けて"読む。1文字ずつの練習では鍛えられない、
+   視覚→音への切り替えの自動化をねらう。読み速度を最も強く予測する力。
+   間に合わなくても HP は減らさない。 */
+const RAN_LEN = 5;
+
+function ranTurn(){
+  showZone('ran');
+  $('b-task').textContent = 'ならんだ字を じゅんばんに よんで！';
+  bmsg('none', '');
+
+  const pool = foeChars(B.foe.set).filter(c => c.length === 1);
+  B.ran = [];
+  while (B.ran.length < RAN_LEN){
+    const c = pool[Math.floor(Math.random() * pool.length)];
+    if (B.ran[B.ran.length - 1] !== c) B.ran.push(c);
+  }
+  B.char = B.ran[0];
+  B.ranAt = 0;
+
+  const box = $('b-ran');
+  box.innerHTML = '';
+  B.ran.forEach((c, i) => {
+    const sp = document.createElement('span');
+    sp.textContent = c;
+    if (i === 0) sp.className = 'now';
+    box.appendChild(sp);
+  });
+
+  const t0 = performance.now();
+  armListenMulti(() => {
+    if (!B.running || B.ranAt >= RAN_LEN) return;
+    const sp = box.children;
+    sp[B.ranAt].className = 'done';
+    B.ranAt++;
+    if (B.ranAt < RAN_LEN){
+      sp[B.ranAt].className = 'now';
+    } else {
+      disarm();
+      clearTimeout(B.timer);
+      ranDone(performance.now() - t0);
+    }
+  });
+  B.timer = setTimeout(() => { disarm(); ranDone(null); }, 9000);
+}
+
+function ranDone(ms){
+  if (!B.running) return;
+  const n = B.ranAt;
+  if (n >= RAN_LEN){
+    const fast = ms !== null && ms < 5000;
+    hitFoe(fast ? 3 : 2,
+           fast ? 'はやい！ ぜんぶ よめた！ かいしんの いちげき！' : 'ぜんぶ よめた！ こうげき！',
+           true);
+  } else if (n >= 3){
+    hitFoe(1, n + 'つ よめた！ こうげき！', false);
+  } else {
+    passTurn('つぎ いこう');          // 読めなくても罰しない
+  }
+  afterTurn();
+}
+
+/** はやくちの並びを、ゆっくり読み上げる */
+function sayRow(){
+  (B.ran || []).forEach((c, i) => {
+    setTimeout(() => {
+      if (B.running && B.turn === 'ran') speak(READ_AS[c] || c);
+    }, i * 750);
+  });
 }
 
 /* みわけターン: にている字から えらぶ */
@@ -2165,7 +2279,7 @@ async function readTurn(){
   disarm();
 
   if (hit === 'ok') hitFoe(1, 'よめた！ こうげき！', false);
-  else              missFoe('soft', 'つぎ いこう');
+  else              passTurn('つぎ いこう');      // 読めなかっただけ。罰しない
   afterTurn();
 }
 
@@ -2289,7 +2403,8 @@ function gameOver(){
 // かくときは「ひらがなの あ」まで言う。よむときは字が見えているので字だけ
 $('btn-b-again').onclick = () => {
   if (!B.char) return;
-  if (B.turn === 'write' || B.turn === 'mikake') sayKana(B.char, () => B.running);
+  if (B.turn === 'ran') sayRow();
+  else if (B.turn === 'write' || B.turn === 'mikake') sayKana(B.char, () => B.running);
   else speak(B.char);
 };
 $('btn-b-hint').onclick  = showHint;
