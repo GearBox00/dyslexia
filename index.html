@@ -305,6 +305,45 @@
     color:var(--line);transition:color .15s ease, transform .15s ease;}
   .ranrow span.now{color:var(--fg);}
   .ranrow span.done{color:var(--good);transform:translateY(-8px);}
+
+  /* めでおえ: 動く字の中から目当ての字をつかまえる（視覚的注意の訓練） */
+  .chasetarget{font-size:clamp(2.6rem,13vw,4rem);line-height:1.25;min-height:1.3em;
+    letter-spacing:0;}
+  .chasebox{position:relative;width:min(340px,86vw);aspect-ratio:1/1;margin:0 auto;
+    background:var(--card);border:3px solid var(--line);border-radius:18px;
+    overflow:hidden;touch-action:none;}
+  .chasebox span{position:absolute;left:0;top:0;
+    font-size:clamp(1.7rem,7.5vw,2.5rem);line-height:1;letter-spacing:0;
+    color:var(--fg);user-select:none;cursor:pointer;will-change:transform;}
+  .chasebox span.gotcha{color:var(--good);}
+  .chasebox span.nope{color:var(--soft);}
+
+  /* おとあそび: 頭音・しりとり・逆さことば（音韻抽出の訓練） */
+  .soundq{font-size:clamp(1.5rem,7vw,2.2rem);letter-spacing:.08em;line-height:1.5;
+    min-height:1.6em;margin:6px 0;}
+  .soundq b{color:var(--soft);}
+  .schoices{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:10px 0;}
+  .schoices button{font-size:clamp(1.6rem,7vw,2.2rem);letter-spacing:.06em;
+    min-width:84px;min-height:74px;padding:10px 16px;
+    background:var(--card);color:var(--fg);border:3px solid var(--line);box-shadow:none;}
+  .schoices button.right{border-color:var(--good);}
+  .schoices button.wrong{border-color:var(--soft);opacity:.55;}
+
+  /* めがねの効果。読みやすさの調整を「そうび」として渡している */
+  .ranrow span.dim{opacity:.2;}                       /* ものさし: 周りを薄く */
+  body.lens-wide{letter-spacing:.17em;line-height:2.2;}
+  body.lens-wide .ranrow{gap:clamp(16px,7vw,36px);}
+  body.lens-wide .glyph,body.lens-wide .bglyph,
+  body.lens-wide .ranrow span,body.lens-wide .chasebox span{letter-spacing:.06em;}
+  body.lens-big .bglyph{font-size:clamp(7rem,34vw,13rem);}
+  body.lens-big .bglyph.word{font-size:clamp(2.8rem,14vw,5rem);}
+  body.lens-big .glyph{font-size:clamp(10rem,50vw,19rem);}
+  body.lens-big .glyph.word{font-size:clamp(3.6rem,19vw,7rem);}
+  body.lens-big .ranrow span{font-size:clamp(2.6rem,12vw,4.2rem);}
+  body.lens-big .schoices button{font-size:clamp(2rem,9vw,2.8rem);}
+  body.lens-big .chasebox span{font-size:clamp(2.1rem,9vw,3rem);}
+  body.lens-big .choice{width:min(150px,32vw);}
+  body.lens-big .soundq{font-size:clamp(1.8rem,8vw,2.6rem);}
   .btask{font-size:.95rem;color:var(--sub);letter-spacing:.1em;min-height:1.6em;}
   /* ひらがな／カタカナ どちらで書くのかを、色でも見分けられるようにする */
   .kindchip{display:inline-block;padding:3px 12px;border-radius:999px;
@@ -527,6 +566,8 @@
     <div class="gear" id="gear-weapon"></div>
     <p class="subhead" style="margin:14px 0 6px">まもり ／ さいだいHP</p>
     <div class="gear" id="gear-armor"></div>
+    <p class="subhead" style="margin:14px 0 6px">めがね ／ 読みやすさ</p>
+    <div class="gear" id="gear-lens"></div>
     <p class="note" id="gear-sum" style="margin:10px 0 0"></p>
   </div>
 
@@ -567,6 +608,16 @@
     <div class="ranrow" id="b-ran"></div>
   </div>
   <div id="battle-slot"></div>
+
+  <div id="sound-wrap">
+    <div class="soundq" id="b-soundq"></div>
+    <div class="schoices" id="b-schoices"></div>
+  </div>
+
+  <div id="chase-wrap">
+    <div class="chasetarget" id="b-chase-target"></div>
+    <div class="chasebox" id="b-chase"></div>
+  </div>
 
   <div id="b-msg" class="none"></div>
 
@@ -838,6 +889,10 @@ const SPRITES = {
   a3: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABhQTFRFAAAAi5u0wMvcvWxK6qVsdeP/AJnbPyYxsxxfjgAAAAF0Uk5TAEDm2GYAAAA8SURBVAjXY2DAAtjLywvAjHIggDBMnNEZheJQRpF6OURTaChYG3tZaGg6hJGWhsYoT0uDGA03GW4XBAAAu/MWyHy8dtcAAAAASUVORK5CYII=',
   hand: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAAA9QTFRFAAAAi5u0vWxKwMvcPyYxo/wp1QAAAAF0Uk5TAEDm2GYAAAAuSURBVAjXY2DAB1yAAESzgBgOIIajsbEImOGspGQCYSgboTNgUnDFMO1wA3ECAAz/CuXOW7hhAAAAAElFTkSuQmCC',
   cloth: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAABGdBTUEAALGPC/xhBQAAABJQTFRFAAAA6qVsvWxKwMvci5u0PyYx4pm7/gAAAAF0Uk5TAEDm2GYAAAA8SURBVAjXY2DAAlhDQwPAjFAggDAUhdAZIa5QRrBpKESTsTFYG2uIsbErhOHigsYIdXGBGA03GW4XBAAACBsQAteM20MAAAAASUVORK5CYII=',
+  l0: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAABGdBTUEAALGPC/xhBQAAAAxQTFRFAAAAi5u0wMvcPyYxKaGK/AAAAAF0Uk5TAEDm2GYAAAAsSURBVAjXY2BABcz//x+AEreWA4lX0TDi6WoY8Wv9AQaG//+Bqu3/oGlnAACYLBYin5F1SQAAAABJRU5ErkJggg==',
+  l1: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABGdBTUEAALGPC/xhBQAAAAZQTFRFAAAA////pdmf3QAAAAF0Uk5TAEDm2GYAAAAkSURBVAjXY2BgYLCxYaixY0hggyIgYGwAISCACwIVAJUxMAAAi+0Fy2DWcZIAAAAASUVORK5CYII=',
+  l2: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABGdBTUEAALGPC/xhBQAAAAZQTFRFAAAA////pdmf3QAAAAF0Uk5TAEDm2GYAAAAwSURBVAjXY2BgYGBkYFA4wCDxgEGmgIHPgoFdhsG5h8HwEIMFXESCgZmFgaEBqBYAtPkHIVRwnfYAAAAASUVORK5CYII=',
+  l3: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABGdBTUEAALGPC/xhBQAAAAZQTFRFAAAA////pdmf3QAAAAF0Uk5TAEDm2GYAAAAtSURBVAjXY2BgYLD/w1D/jyGBjSHdjCGvjCHnGUPmMYbkaQguUAqoAKiMgQEAS8cOC5N/YsMAAAAASUVORK5CYII=',
 };
 
 </script>
@@ -1771,6 +1826,16 @@ const ITEMS = {
   a1:    { name:'みどりの くすり', kind:'armor', v:2, art:'a1'    },
   a2:    { name:'あかい くすり',   kind:'armor', v:4, art:'a2'    },
   a3:    { name:'あおい くすり',   kind:'armor', v:6, art:'a3'    },
+
+  /* めがね＝読みやすさの調整。
+     これは強くなるための道具ではなく、読むための道具なので
+     **敵を倒して手に入れる形にしない**。最初から全部持っている。
+     必要な子が使えないと本末転倒になるため。
+     「そうび」の見た目にしているのは、支援用具に見せないため。 */
+  l0:    { name:'ふつう',         kind:'lens', v:'—',      art:'l0', tip:'そのまま'          },
+  l1:    { name:'ものさし',       kind:'lens', v:'1字',    art:'l1', tip:'いま読む字だけ はっきり' },
+  l2:    { name:'ひろがりレンズ', kind:'lens', v:'すきま', art:'l2', tip:'字と字の あいだを広く'   },
+  l3:    { name:'おおきめレンズ', kind:'lens', v:'大',     art:'l3', tip:'字を 大きく'         },
 };
 
 const B = {
@@ -1780,10 +1845,16 @@ const B = {
   combo:0,        // 連続で当てた数
   sound:true,
   php:0,          // 自分のHP
-  items:{ hand:true, cloth:true },   // 持っているそうび
+  items:{ hand:true, cloth:true, l0:true, l1:true, l2:true, l3:true },
   weapon:'hand', armor:'cloth',
+  lens:'l0',      // めがね。最初から全部つけられる
 };
 
+/** めがねの効果を画面に反映する */
+function applyLens(){
+  document.body.classList.toggle('lens-wide', B.lens === 'l2');
+  document.body.classList.toggle('lens-big',  B.lens === 'l3');
+}
 const atkOf  = () => (ITEMS[B.weapon] || ITEMS.hand).v;
 const maxHp  = () => BASE_HP + (ITEMS[B.armor] || ITEMS.cloth).v;
 
@@ -1830,15 +1901,19 @@ function loadRpg(){
   B.exp    = s.exp >= 0 ? s.exp : 0;
   B.beaten = s.beaten || {};
   B.sound  = s.sound !== false;
-  B.items  = Object.assign({ hand:true, cloth:true }, s.items || {});
+  B.items  = Object.assign({ hand:true, cloth:true, l0:true, l1:true, l2:true, l3:true },
+                           s.items || {});
+  ['l0','l1','l2','l3'].forEach(k => { B.items[k] = true; });   // めがねは常に持っている
   B.weapon = (s.weapon && B.items[s.weapon]) ? s.weapon : 'hand';
   B.armor  = (s.armor  && B.items[s.armor])  ? s.armor  : 'cloth';
+  B.lens   = (s.lens && ITEMS[s.lens] && ITEMS[s.lens].kind === 'lens') ? s.lens : 'l0';
+  applyLens();
 }
 function saveRpg(){
   try {
     localStorage.setItem(LS_RPG, JSON.stringify({
       lv:B.lv, exp:B.exp, beaten:B.beaten, sound:B.sound,
-      items:B.items, weapon:B.weapon, armor:B.armor }));
+      items:B.items, weapon:B.weapon, armor:B.armor, lens:B.lens }));
   } catch(e){}
 }
 
@@ -1901,9 +1976,13 @@ function renderGear(){
       b.disabled = !have;
       b.innerHTML = '<img src="' + SPRITES[it.art] + '" alt="">' +
         '<span>' + (have ? it.name : '？？？') + '</span>' +
-        '<span class="val">' + (have ? '+' + it.v : '—') + '</span>';
+        '<span class="val">' +
+        (have ? (kind === 'lens' ? it.v : '+' + it.v) : '—') + '</span>';
+      if (it.tip) b.title = it.tip;
       if (have) b.onclick = () => {
-        if (kind === 'weapon') B.weapon = k; else B.armor = k;
+        if (kind === 'weapon') B.weapon = k;
+        else if (kind === 'armor') B.armor = k;
+        else { B.lens = k; applyLens(); }
         saveRpg();
         renderGear();
         sfxInit(); sfxHit();
@@ -1913,6 +1992,7 @@ function renderGear(){
   };
   build('weapon', 'gear-weapon', B.weapon);
   build('armor',  'gear-armor',  B.armor);
+  build('lens',   'gear-lens',   B.lens);
   $('gear-sum').textContent =
     'いまの こうげき力 ' + (1 + atkOf()) + '〜' + (2 + atkOf()) +
     ' ／ さいだいHP ' + maxHp() + '　（てきを たおすと 新しい そうびが 手に入ります）';
@@ -1926,9 +2006,11 @@ function showZone(which){
   $('b-read').style.display      = reading            ? '' : 'none';
   $('b-glyph').style.display     = which === 'read'   ? '' : 'none';
   $('b-ran').style.display       = which === 'ran'    ? '' : 'none';
-  $('battle-slot').style.display = reading            ? 'none' : '';
+  $('battle-slot').style.display = (which === 'write' || which === 'mikake') ? '' : 'none';
   $('pad').style.display         = which === 'write'  ? '' : 'none';
   $('mw-choices').style.display  = which === 'mikake' ? '' : 'none';
+  $('chase-wrap').style.display  = which === 'chase'  ? '' : 'none';
+  $('sound-wrap').style.display  = which === 'sound'  ? '' : 'none';
   // お手本を見せられるのは、書くときだけ
   $('btn-b-hint').style.display  = which === 'write'  ? '' : 'none';
 }
@@ -1942,6 +2024,11 @@ function clearTurn(){
   $('b-glyph').textContent = '';
   $('b-glyph').className = 'bglyph';
   $('b-ran').innerHTML = '';
+  chaseStop();
+  $('b-chase').innerHTML = '';
+  $('b-chase-target').textContent = '';
+  $('b-soundq').innerHTML = '';
+  $('b-schoices').innerHTML = '';
   $('b-task').textContent = '';
   bmsg('none', '');
 }
@@ -2038,6 +2125,7 @@ async function startBattle(f){
 
 function endBattle(){
   B.running = false;
+  chaseStop();
   B.busy = false;
   clearTimeout(B.timer);
   clearTimeout(B.voiceTimer);
@@ -2107,6 +2195,8 @@ function nextTurn(){
   if (B.style !== 'write'){
     kinds.push('read');
     kinds.push('ran');                         // はやくち（続けて読む）
+    kinds.push('chase');                       // めでおえ（動く字をつかまえる）
+    kinds.push('sound');                       // おとあそび（頭音・しりとり・逆さ）
     if (sets.length) kinds.push('mikake');     // みわけは「よみ」のなかま
   }
   if (B.style !== 'read') kinds.push('write');
@@ -2114,6 +2204,8 @@ function nextTurn(){
   B.turn = kinds[Math.floor(Math.random() * kinds.length)];
 
   if (B.turn === 'ran'){ ranTurn(); return; }
+  if (B.turn === 'chase'){ chaseTurn(); return; }
+  if (B.turn === 'sound'){ soundTurn(); return; }
 
   if (B.turn === 'mikake'){
     B.mwSet = sets[Math.floor(Math.random() * sets.length)];
@@ -2161,6 +2253,7 @@ function ranTurn(){
     if (i === 0) sp.className = 'now';
     box.appendChild(sp);
   });
+  if (B.lens === 'l1') dimRow(box, 0);
 
   const t0 = performance.now();
   armListenMulti(() => {
@@ -2170,6 +2263,7 @@ function ranTurn(){
     B.ranAt++;
     if (B.ranAt < RAN_LEN){
       sp[B.ranAt].className = 'now';
+      if (B.lens === 'l1') dimRow(box, B.ranAt);   // ものさし
     } else {
       disarm();
       clearTimeout(B.timer);
@@ -2195,6 +2289,15 @@ function ranDone(ms){
   afterTurn();
 }
 
+/** ものさし: いま読む字のほかを薄くして、目印にする
+    デジタルのリーディングルーラーと同じ考え方（周りを隠して視野を絞る） */
+function dimRow(box, at){
+  [...box.children].forEach((sp, i) => {
+    if (i !== at && !sp.classList.contains('done')) sp.classList.add('dim');
+    else sp.classList.remove('dim');
+  });
+}
+
 /** はやくちの並びを、ゆっくり読み上げる */
 function sayRow(){
   (B.ran || []).forEach((c, i) => {
@@ -2202,6 +2305,213 @@ function sayRow(){
       if (B.running && B.turn === 'ran') speak(READ_AS[c] || c);
     }, i * 750);
   });
+}
+
+/* おとあそびターン（音韻抽出）
+   音韻操作は「モーラ分解 / 音韻抽出 / 音と文字の対応」の3つからなる。
+   分解は「おとの かず」で扱っているが、抽出が手つかずだった。
+   しりとり・頭音・逆さことばは、その抽出を鍛える定番の課題。
+   ことばは "おとの かず" と同じ一覧（特殊音節を含む）を使う。 */
+const SQ = { kind:'', answer:'', locked:false };
+
+/** ことばを聞いて、はじめ／おわりの音、または逆さ読みを答える */
+function soundTurn(){
+  showZone('sound');
+  bmsg('none', '');
+  SQ.locked = false;
+
+  const w = MORA_WORDS[Math.floor(Math.random() * MORA_WORDS.length)].w;
+  const mora = splitMora(w);
+  const kinds = ['head', 'tail'];
+  if (mora.length <= 3) kinds.push('reverse');      // 逆さは短いことばだけ
+  SQ.kind = kinds[Math.floor(Math.random() * kinds.length)];
+  B.char = w;
+
+  let question, answer, wrongs;
+  if (SQ.kind === 'head'){
+    answer = mora[0];
+    question = '「<b>' + w + '</b>」の <b>はじめ</b>の おとは？';
+    wrongs = mora.slice(1);
+  } else if (SQ.kind === 'tail'){
+    answer = mora[mora.length - 1];
+    question = '「<b>' + w + '</b>」の <b>おわり</b>の おとは？';
+    wrongs = mora.slice(0, -1);
+  } else {
+    answer = mora.slice().reverse().join('');
+    question = '「<b>' + w + '</b>」を <b>さかさま</b>に よむと？';
+    // まぎらわしい外れ: 1文字だけ入れかえたもの
+    const swap = mora.slice();
+    if (swap.length > 2){ const t = swap[0]; swap[0] = swap[1]; swap[1] = t; }
+    wrongs = [w, swap.join('')];
+  }
+  SQ.answer = answer;
+
+  $('b-task').textContent = 'きいて こたえてね';
+  $('b-soundq').innerHTML = question;
+
+  // 選択肢をつくる（答え＋外れ2つ）
+  const opts = [answer];
+  for (const x of shuffle(wrongs)){
+    if (opts.length >= 3) break;
+    if (!opts.includes(x)) opts.push(x);
+  }
+  const pool = 'あいうえおかきくけこさしすせそたちつてとなにぬねの';
+  while (opts.length < 3){
+    const c = pool[Math.floor(Math.random() * pool.length)];
+    if (!opts.includes(c)) opts.push(c);
+  }
+
+  const box = $('b-schoices');
+  box.innerHTML = '';
+  shuffle(opts).forEach(o => {
+    const b = document.createElement('button');
+    b.textContent = o;
+    b.dataset.val = o;
+    b.onclick = () => soundPick(o, b);
+    box.appendChild(b);
+  });
+
+  B.voiceTimer = setTimeout(() => { if (B.running) speak(w); }, 300);
+}
+
+function soundPick(v, btn){
+  if (!B.running || SQ.locked) return;
+  SQ.locked = true;
+  const right = $('b-schoices').querySelector('[data-val="' + SQ.answer + '"]');
+  if (v === SQ.answer){
+    btn.classList.add('right');
+    hitFoe(2, 'せいかい！ かいしんの いちげき！', true);
+    speak(SQ.answer);
+    afterTurn();
+    return;
+  }
+  btn.classList.add('wrong');
+  if (right) right.classList.add('right');
+  missFoe('soft', 'こたえは 「' + SQ.answer + '」');
+  speak(SQ.answer);
+  afterTurn(3000);
+}
+
+/* めでおえターン（視覚的注意）
+   動く文字の中から、目当ての字をつかまえる。
+   アクションゲームの訓練で読みの正確さ・速度・呼称速度が改善したという
+   ランダム化比較試験があり、効いているのは「動くものを追う注意の負荷」とされる。
+   まちがってタップしても HP は減らさない。手がすべっただけのことが多いため。 */
+const CHASE = { items:[], target:'', raf:0, t0:0, box:null, w:0, h:0, done:false };
+
+function chaseStop(){
+  if (CHASE.raf) cancelAnimationFrame(CHASE.raf);
+  CHASE.raf = 0;
+  CHASE.items = [];
+}
+
+function chaseTurn(){
+  showZone('chase');
+  $('b-task').textContent = 'うごいている 字を つかまえて！';
+  bmsg('none', '');
+  chaseStop();
+
+  // まぎらわしい字があれば、それを混ぜる（みわけの練習にもなる）
+  const pool = foeChars(B.foe.set).filter(c => c.length === 1);
+  const sets = confuseSetsFor(B.foe);
+  let cast;
+  if (sets.length && Math.random() < 0.6){
+    const set = sets[Math.floor(Math.random() * sets.length)];
+    B.char = set[Math.floor(Math.random() * set.length)];
+    cast = set.slice();
+  } else {
+    B.char = pool[Math.floor(Math.random() * pool.length)];
+    cast = [B.char];
+  }
+  while (cast.length < 6){
+    const c = pool[Math.floor(Math.random() * pool.length)];
+    if (!cast.includes(c)) cast.push(c);
+  }
+  CHASE.target = B.char;
+  CHASE.done = false;
+
+  $('b-chase-target').innerHTML = kindChip(B.char) + B.char;
+
+  const box = $('b-chase');
+  box.innerHTML = '';
+  CHASE.box = box;
+  const r = box.getBoundingClientRect();
+  CHASE.w = r.width || 300;
+  CHASE.h = r.height || 300;
+
+  // 動きを止めたい設定のときは、じっとさせて「探す」課題にする
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // 速さは「1ミリ秒あたり何px」。フレーム数で決めると
+  // 画面のリフレッシュレート(60Hz/120Hz)で速さが変わってしまう
+  const speed = still ? 0 : 0.021 + FOES.indexOf(B.foe) * 0.004;
+
+  CHASE.items = shuffle(cast).map(c => {
+    const el = document.createElement('span');
+    el.textContent = c;
+    el.dataset.char = c;
+    box.appendChild(el);
+    const size = 46;
+    const it = {
+      el, c,
+      x: 10 + Math.random() * Math.max(10, CHASE.w - size - 20),
+      y: 10 + Math.random() * Math.max(10, CHASE.h - size - 20),
+      vx: (Math.random() < 0.5 ? -1 : 1) * speed * (0.7 + Math.random() * 0.6),
+      vy: (Math.random() < 0.5 ? -1 : 1) * speed * (0.7 + Math.random() * 0.6),
+      size,
+    };
+    el.style.transform = 'translate(' + it.x + 'px,' + it.y + 'px)';
+    el.onpointerdown = ev => { ev.preventDefault(); chasePick(it); };
+    return it;
+  });
+
+  CHASE.t0 = performance.now();
+  CHASE.last = CHASE.t0;
+  const step = () => {
+    if (!B.running || CHASE.done) return;
+    const now = performance.now();
+    // 画面が隠れて戻ったときに大きく飛ばないよう、1回の進みは上限を設ける
+    const dt = Math.min(50, now - CHASE.last);
+    CHASE.last = now;
+    for (const it of CHASE.items){
+      it.x += it.vx * dt; it.y += it.vy * dt;
+      if (it.x < 0){ it.x = 0; it.vx = Math.abs(it.vx); }
+      if (it.y < 0){ it.y = 0; it.vy = Math.abs(it.vy); }
+      if (it.x > CHASE.w - it.size){ it.x = CHASE.w - it.size; it.vx = -Math.abs(it.vx); }
+      if (it.y > CHASE.h - it.size){ it.y = CHASE.h - it.size; it.vy = -Math.abs(it.vy); }
+      it.el.style.transform = 'translate(' + it.x.toFixed(1) + 'px,' + it.y.toFixed(1) + 'px)';
+    }
+    CHASE.raf = requestAnimationFrame(step);
+  };
+  CHASE.raf = requestAnimationFrame(step);
+
+  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 300);
+  B.timer = setTimeout(() => {
+    if (!B.running || CHASE.done) return;
+    CHASE.done = true; chaseStop();
+    passTurn('つぎ いこう');
+    afterTurn();
+  }, 12000);
+}
+
+function chasePick(it){
+  if (!B.running || CHASE.done) return;
+  if (it.c !== CHASE.target){
+    // 手がすべっただけかもしれないので、罰しない。そのまま続ける
+    it.el.classList.add('nope');
+    setTimeout(() => it.el.classList.remove('nope'), 500);
+    bmsg('soft', 'そっちじゃないよ');
+    return;
+  }
+  CHASE.done = true;
+  chaseStop();
+  clearTimeout(B.timer);
+  it.el.classList.add('gotcha');
+  const ms = performance.now() - CHASE.t0;
+  const fast = ms < 3500;
+  hitFoe(fast ? 2 : 1,
+         fast ? 'つかまえた！ かいしんの いちげき！' : 'つかまえた！ こうげき！',
+         fast);
+  afterTurn();
 }
 
 /* みわけターン: にている字から えらぶ */
@@ -2403,8 +2713,10 @@ function gameOver(){
 // かくときは「ひらがなの あ」まで言う。よむときは字が見えているので字だけ
 $('btn-b-again').onclick = () => {
   if (!B.char) return;
-  if (B.turn === 'ran') sayRow();
-  else if (B.turn === 'write' || B.turn === 'mikake') sayKana(B.char, () => B.running);
+  if (B.turn === 'sound') speak(B.char);
+  else if (B.turn === 'ran') sayRow();
+  else if (B.turn === 'write' || B.turn === 'mikake' || B.turn === 'chase')
+    sayKana(B.char, () => B.running);
   else speak(B.char);
 };
 $('btn-b-hint').onclick  = showHint;
