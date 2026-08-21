@@ -1574,13 +1574,26 @@ function kindChip(c){
   const k = kanaKind(c);
   return '<span class="kindchip ' + (k === 'カタカナ' ? 'kata' : 'hira') + '">' + k + '</span>';
 }
-/** 「ひらがなの」… 一拍おいて …「あ」と読み上げる。
-    書かせたい字が前の言葉に埋もれないよう、必ず間をあける。
-    alive: 途中で画面を離れたときに続きを言わないための確認 */
+/** 「ひらがなの」…一拍おいて…「あ」と読み上げる。
+    ただし **必要なときだけ**。「ひらがなの」は実測で1.6秒かかり、
+    毎回言うと待ち時間が3.6秒になって子どもの手が止まる（実際に止まった）。
+
+    言う必要があるのは「どちらの字か画面から分からない」ときだけ:
+      ・みわけ / めでおえ … 字が画面に見えている → 要らない
+      ・その敵がひらがなだけ（またはカタカナだけ）… 迷いようがない → 要らない
+    どちらの場合も、色つきの札は出しているので見分けはつく。 */
+function needKindPrefix(){
+  if (B.turn === 'mikake' || B.turn === 'chase') return false;   // 字が見えている
+  const set = B.foe && B.foe.set;
+  return set === 'both' || set === 'all';                        // 2種類が混ざる敵だけ
+}
+
 async function sayKana(c, alive){
-  await speak(kanaKind(c) + 'の');
-  await sleep(600);
-  if (alive && !alive()) return;
+  if (needKindPrefix()){
+    await speak(kanaKind(c) + 'の');
+    await sleep(350);
+    if (alive && !alive()) return;
+  }
   return speak(READ_AS[c] || c);
 }
 
@@ -2576,7 +2589,7 @@ function soundTurn(){
     box.appendChild(b);
   });
 
-  B.voiceTimer = setTimeout(() => { if (B.running) speak(w); }, 300);
+  B.voiceTimer = setTimeout(() => { if (B.running) speak(w); }, 150);
 }
 
 function soundPick(v, btn){
@@ -2691,7 +2704,7 @@ function chaseTurn(){
   };
   CHASE.raf = requestAnimationFrame(step);
 
-  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 300);
+  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 150);
   B.timer = setTimeout(() => {
     if (!B.running || CHASE.done) return;
     CHASE.done = true; chaseStop();
@@ -2745,7 +2758,7 @@ function mikakeTurn(){
     b.onclick = () => battleMwPick(c, b);
     box.appendChild(b);
   });
-  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 350);
+  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 150);
 }
 function battleMwPick(c, btn){
   if (!B.running || B.mwLocked) return;
@@ -2819,7 +2832,7 @@ function writeTurn(){
   $('b-task').innerHTML = kindChip(B.char) + 'で かいて！';
   bmsg('none', '');
   loadChar(B.char);
-  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 350);
+  B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 150);
   W.onDone = () => {
     if (!B.running) return;
     updateWeight(B.char, W.miss === 0 ? 'early' : 'late');
