@@ -246,6 +246,16 @@
   .gear button.on{border-color:var(--good);background:var(--warnbg);}
   .gear button[disabled]{opacity:.35;}
   .gear .val{font-size:.72rem;color:var(--sub);}
+
+  /* そうびの画面は読む場所なので、ここだけ文字を大きくする */
+  #gearcard h2{font-size:1.25rem;margin-bottom:.6em;}
+  #gearcard .subhead{font-size:1.02rem;color:var(--fg);}
+  #gearcard .gear{gap:12px;}
+  #gearcard .gear button{font-size:1.02rem;min-width:104px;
+    padding:12px 10px 10px;gap:4px;line-height:1.4;}
+  #gearcard .gear button img{width:46px;height:46px;}
+  #gearcard .gear .val{font-size:.92rem;}
+  #gearcard .note{font-size:1rem;line-height:1.9;}
   .gotover{font-size:1.5rem;letter-spacing:.1em;color:var(--soft);}
 
   .lvrow{display:flex;align-items:center;justify-content:center;gap:10px;
@@ -560,7 +570,7 @@
     <span>おとを ならす</span>
   </label>
 
-  <div class="card">
+  <div class="card" id="gearcard">
     <h2>そうび</h2>
     <p class="subhead" style="margin:0 0 6px">ぶき ／ こうげき力</p>
     <div class="gear" id="gear-weapon"></div>
