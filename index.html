@@ -22,6 +22,11 @@
     --field:#FFFFFF;
     --stage1:#E7F0F7;      /* 戦闘ステージの空 */
     --stage2:#F6EEDF;      /* 戦闘ステージの地面 */
+    --stage-glow:rgba(255,255,255,.75);   /* 敵の背後のひかり */
+    --stage-edge:rgba(255,255,255,.6);    /* ステージの縁 */
+    --glass:rgba(24,20,17,.55);           /* すりガラスの板 */
+    --glass-edge:rgba(255,255,255,.16);
+    --glass-text:#F6F0E4;
   }
   /* まぶしさを避ける方針は暗い側でも同じ。単純な反転ではなく暖色の低コントラスト */
   @media (prefers-color-scheme: dark){
@@ -30,6 +35,8 @@
       --accent:#6FA8DC; --good:#5FC391; --soft:#E0B65C;
       --card:#292521; --meter:#332E27; --dot:#3A342C; --dotn:#544C41;
       --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815; --stage1:#26313A; --stage2:#2E2921;
+      --stage-glow:rgba(120,170,210,.30); --stage-edge:rgba(255,255,255,.10);
+      --glass:rgba(10,9,8,.55); --glass-edge:rgba(255,255,255,.12); --glass-text:#F3ECDF;
     }
   }
   :root[data-theme="dark"]{
@@ -37,12 +44,16 @@
     --accent:#6FA8DC; --good:#5FC391; --soft:#E0B65C;
     --card:#292521; --meter:#332E27; --dot:#3A342C; --dotn:#544C41;
     --warnbg:#312A1E; --warnline:#4A3F2B; --field:#1B1815; --stage1:#26313A; --stage2:#2E2921;
+      --stage-glow:rgba(120,170,210,.30); --stage-edge:rgba(255,255,255,.10);
+      --glass:rgba(10,9,8,.55); --glass-edge:rgba(255,255,255,.12); --glass-text:#F3ECDF;
   }
   :root[data-theme="light"]{
     --bg:#FBF7EE; --fg:#2E2A26; --sub:#7A736B; --line:#E4DCCC;
     --accent:#3B82C4; --good:#2E9E6B; --soft:#D9A441;
     --card:#FFFDF8; --meter:#EDE6D8; --dot:#E4DCCC; --dotn:#C9C0B2;
     --warnbg:#FDF3E0; --warnline:#EBD9B4; --field:#FFFFFF; --stage1:#E7F0F7; --stage2:#F6EEDF;
+    --stage-glow:rgba(255,255,255,.75); --stage-edge:rgba(255,255,255,.6);
+    --glass:rgba(24,20,17,.55); --glass-edge:rgba(255,255,255,.16); --glass-text:#F6F0E4;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -195,9 +206,17 @@
   /* ---- たたかう ---- */
   .foelist{display:flex;flex-direction:column;gap:12px;}
   .foecard{display:flex;align-items:center;gap:14px;text-align:left;
-    background:var(--card);color:var(--fg);border:2px solid var(--line);
-    box-shadow:none;padding:12px 16px;min-height:0;font-size:1.05rem;}
-  .foecard img{width:56px;height:56px;flex:0 0 56px;image-rendering:pixelated;}
+    background:var(--card);color:var(--fg);border:1px solid var(--line);
+    border-radius:18px;padding:12px 16px;min-height:0;font-size:1.05rem;
+    box-shadow:0 6px 16px -10px rgba(0,0,0,.35);
+    transition:transform .15s ease, box-shadow .15s ease;}
+  .foecard:not([disabled]):active{transform:translateY(1px);
+    box-shadow:0 3px 10px -8px rgba(0,0,0,.35);}
+  /* 絵は枠に入れて置く。並んだときに揃って見える */
+  .foecard img{width:52px;height:52px;flex:0 0 52px;image-rendering:pixelated;
+    background:linear-gradient(180deg,var(--stage1),var(--stage2));
+    border:1px solid var(--line);border-radius:12px;padding:3px;
+    box-shadow:inset 0 2px 6px -3px rgba(0,0,0,.35);}
   .foecard .fname{display:block;}
   .foecard .fsub{display:block;font-size:.78rem;color:var(--sub);letter-spacing:.04em;}
   .foecard.locked{opacity:.5;}
@@ -206,15 +225,31 @@
   #battle{align-items:center;text-align:center;}
 
   /* 戦闘のステージ。ここだけ空気を変えて「戦っている場所」に見せる */
+  /* ステージ。空→ひかり→地面→敵 と層を重ねて奥行きを出す。
+     読む・書く部分の見た目は変えていない（ここは戦闘の枠だけ） */
   .stage{position:relative;width:min(430px,92vw);margin:0 auto 10px;
-    padding:16px 12px 10px;border-radius:26px;overflow:hidden;
-    background:linear-gradient(180deg,var(--stage1) 0%,var(--stage1) 62%,var(--stage2) 62%,var(--stage2) 100%);
-    border:2px solid var(--line);}
+    padding:18px 12px 12px;border-radius:28px;overflow:hidden;
+    background:
+      radial-gradient(120% 78% at 50% 8%, var(--stage-glow) 0%, transparent 62%),
+      linear-gradient(180deg,var(--stage1) 0%,var(--stage1) 58%,var(--stage2) 58%,var(--stage2) 100%);
+    border:1px solid var(--stage-edge);
+    box-shadow:0 14px 34px -16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.35);}
+  /* まわりをすこし落として、中央に目が行くようにする */
+  .stage::after{content:'';position:absolute;inset:0;pointer-events:none;border-radius:28px;
+    box-shadow:inset 0 0 46px -14px rgba(0,0,0,.35);}
   /* 地面もドット絵のタイルを敷く */
   .ground{position:absolute;left:0;right:0;bottom:0;height:38%;
     background-repeat:repeat;background-size:34px 34px;image-rendering:pixelated;
     opacity:.85;pointer-events:none;}
   .stage.shake,.bar.shake{animation:shake .34s ease-in-out;}
+  /* 当たった瞬間の手応え。ほんの一瞬だけ、光らせて・止める */
+  .flash{position:absolute;inset:0;pointer-events:none;opacity:0;border-radius:28px;
+    background:radial-gradient(60% 45% at 50% 40%, rgba(255,255,255,.92), transparent 70%);}
+  .flash.on{animation:flashpop .26s ease-out;}
+  .flash.crit{background:radial-gradient(70% 55% at 50% 40%, rgba(255,236,160,.98), transparent 72%);}
+  @keyframes flashpop{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+  .stage.hitstop{animation:hitstop .16s steps(2,end);}
+  @keyframes hitstop{0%{transform:scale(1)}50%{transform:scale(1.018)}100%{transform:scale(1)}}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}
     50%{transform:translateX(6px)}80%{transform:translateX(-4px)}}
   @keyframes enter{0%{opacity:0;transform:translateY(-26px) scale(.7)}
@@ -222,19 +257,25 @@
   .foe.enter img{animation:enter .62s ease-out;}
 
   /* ダメージの数字が飛ぶ */
-  .dmg{position:absolute;left:50%;top:26%;font-size:2.3rem;font-weight:bold;
-    color:var(--good);text-shadow:0 2px 0 rgba(255,255,255,.55);
+  .dmg{position:absolute;left:50%;top:24%;z-index:3;font-size:2.4rem;font-weight:800;
+    color:#fff;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 10px rgba(0,0,0,.45), 0 2px 0 rgba(0,0,0,.55),
+                0 0 22px rgba(255,255,255,.35);
     pointer-events:none;letter-spacing:0;animation:dmgpop .95s ease-out forwards;}
-  .dmg.crit{font-size:3.1rem;color:#D9541F;}
+  .dmg.crit{font-size:3.3rem;color:#FFE08A;
+    text-shadow:0 0 12px rgba(180,80,0,.6), 0 2px 0 rgba(120,50,0,.7),
+                0 0 26px rgba(255,200,80,.6);}
   @keyframes dmgpop{
     0%{opacity:0;transform:translate(-50%,14px) scale(.5)}
     22%{opacity:1;transform:translate(-50%,-8px) scale(1.18)}
     100%{opacity:0;transform:translate(-50%,-62px) scale(1)}}
 
-  .combo{position:absolute;right:12px;top:12px;font-size:.9rem;letter-spacing:.06em;
-    color:#fff;background:var(--soft);border-radius:999px;padding:4px 12px;
-    opacity:0;transition:opacity .25s;}
-  .combo.on{opacity:1;}
+  .combo{position:absolute;right:12px;top:12px;z-index:3;font-size:.9rem;letter-spacing:.06em;
+    color:#fff;background:linear-gradient(180deg,#E8B65C,#C98A2A);
+    border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 13px;
+    box-shadow:0 4px 12px -4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.45);
+    opacity:0;transform:translateY(-4px);transition:opacity .25s, transform .25s;}
+  .combo.on{opacity:1;transform:translateY(0);}
 
   /* そうび */
   .gear{display:flex;gap:10px;flex-wrap:wrap;}
@@ -259,8 +300,13 @@
   .gotover{font-size:1.5rem;letter-spacing:.1em;color:var(--soft);}
 
   .lvrow{display:flex;align-items:center;justify-content:center;gap:10px;
-    font-size:.85rem;color:var(--sub);letter-spacing:.06em;}
-  .lvbadge{background:var(--accent);color:#fff;border-radius:999px;padding:3px 12px;}
+    font-size:.85rem;color:var(--sub);letter-spacing:.06em;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;
+    padding:6px 14px;width:fit-content;margin:2px auto 0;
+    box-shadow:0 2px 8px -4px rgba(0,0,0,.25);}
+  .lvbadge{background:linear-gradient(180deg,#6FA8DC,#3B82C4);color:#fff;
+    border-radius:999px;padding:3px 12px;font-variant-numeric:tabular-nums;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4);}
 
   /* レベルアップの帯 */
   .levelup{position:fixed;left:0;right:0;top:38%;z-index:20;text-align:center;
@@ -271,11 +317,17 @@
     80%{opacity:1}100%{opacity:0}}
 
   @media (prefers-reduced-motion:reduce){
-    .stage.shake,.foe.enter img,.foe.idle img,.dmg,.levelup{animation:none;}
+    .stage.shake,.stage.hitstop,.foe.enter img,.foe.idle img,
+    .dmg,.levelup,.flash.on{animation:none;}
     .dmg{opacity:1;}
   }
 
   .foe{width:min(190px,46vw);margin:2px auto 0;position:relative;z-index:1;}
+  /* 足もとの影。浮いて見えないように地面へ置く */
+  .foe::after{content:'';position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);
+    width:62%;height:12px;border-radius:50%;
+    background:radial-gradient(50% 50%, rgba(0,0,0,.34), transparent 72%);
+    pointer-events:none;}
   /* ドット絵なので、拡大してもぼかさない */
   .foe img{width:100%;height:auto;display:block;image-rendering:pixelated;
     filter:drop-shadow(0 4px 0 rgba(0,0,0,.18));}
@@ -288,17 +340,27 @@
     .foe.idle svg,.foe.hit svg{animation:none;}
   }
   /* 敵の名前とHPは、後ろが空でも地面でも読めるよう暗い帯の上に置く */
-  .foestatus{position:relative;z-index:2;margin:8px auto 0;width:min(330px,88%);
-    background:rgba(20,16,14,.62);border-radius:14px;padding:6px 10px 8px;
-    backdrop-filter:blur(2px);}
-  .foestatus .barlabel{color:#F3ECDF;margin:0 0 2px;text-shadow:0 1px 2px rgba(0,0,0,.6);}
+  .foestatus{position:relative;z-index:2;margin:10px auto 0;width:min(330px,88%);
+    background:var(--glass);border:1px solid var(--glass-edge);
+    border-radius:16px;padding:7px 12px 9px;
+    box-shadow:0 8px 20px -10px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12);
+    backdrop-filter:blur(6px) saturate(1.1);}
+  .foestatus .barlabel{color:var(--glass-text);margin:0 0 3px;
+    text-shadow:0 1px 2px rgba(0,0,0,.55);font-size:.82rem;letter-spacing:.05em;}
   .foestatus .bar{margin:0 auto;}
 
   /* HPバーは背景に溶けないよう、暗い受け皿＋枠をつけて色で役割を分ける */
-  .bar{width:min(320px,84vw);height:18px;border-radius:10px;
-    background:#3A3430;border:2px solid #24201D;
-    overflow:hidden;margin:8px auto 2px;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}
-  .bar i{display:block;height:100%;transition:width .35s ease;}
+  .bar{position:relative;width:min(320px,84vw);height:18px;border-radius:999px;
+    background:#332E2A;border:1px solid rgba(0,0,0,.5);
+    overflow:hidden;margin:8px auto 2px;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.10);}
+  .bar i{display:block;height:100%;transition:width .35s cubic-bezier(.2,.9,.2,1);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35);}
+  /* 目盛り。色が見えなくても「あといくつ」が数えられる */
+  .bar.seg::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(90deg,
+      transparent 0 calc(var(--seg,25%) - 2px),
+      rgba(0,0,0,.42) calc(var(--seg,25%) - 2px) var(--seg,25%));}
   /* 英国ディスレクシア協会のStyle Guideは「緑と赤/ピンクは避ける」としている。
      色覚特性のある人（日本人男性の約5%）に区別しにくいため。
      ここでは 橙 と 青 という、色覚特性でも分離しやすい組み合わせにしている。 */
@@ -685,16 +747,17 @@
 
   <div class="stage" id="stage">
     <div class="ground" id="ground"></div>
+    <div class="flash" id="b-flash"></div>
     <div class="combo" id="b-combo"></div>
     <div class="foe idle" id="foe"></div>
     <div class="foestatus">
       <p class="barlabel" id="foename"></p>
-      <div class="bar foehp"><i id="foehp"></i></div>
+      <div class="bar foehp seg" id="foehpbar"><i id="foehp"></i></div>
     </div>
   </div>
 
   <p class="barlabel" id="myname"></p>
-  <div class="bar myhp" id="myhpbar"><i id="myhp"></i></div>
+  <div class="bar myhp seg" id="myhpbar"><i id="myhp"></i></div>
 
   <div class="lvrow">
     <span class="lvbadge" id="b-lv"></span>
@@ -2258,9 +2321,16 @@ function showHint(){
     if (W.step !== 'trace') $('g-guide').innerHTML = '';
   }, 3000);
 }
+/** 目盛りの幅を決める。段が多すぎると数えられないので、最大12段にまとめる */
+function setSegments(barId, max){
+  const n = Math.max(1, max <= 12 ? max : Math.ceil(max / Math.ceil(max / 12)));
+  const el = $(barId);
+  if (el) el.style.setProperty('--seg', (100 / n) + '%');
+}
 function paintHp(){
   $('foehp').style.width = Math.max(0, B.hp / B.foe.hp * 100) + '%';
   $('foename').textContent = B.foe.name + '  HP ' + Math.max(0, B.hp) + ' / ' + B.foe.hp;
+  setSegments('foehpbar', B.foe.hp);
 }
 function paintLv(){
   $('b-lv').textContent = 'Lv ' + B.lv;
@@ -2268,6 +2338,7 @@ function paintLv(){
 }
 function paintMy(){
   const m = maxHp();
+  setSegments('myhpbar', m);
   $('myhp').style.width = Math.max(0, B.php / m * 100) + '%';
   $('myhpbar').classList.toggle('low', B.php <= Math.max(1, Math.floor(m / 3)));
   $('myname').textContent = 'じぶん  HP ' + Math.max(0, B.php) + ' / ' + m +
@@ -2278,6 +2349,25 @@ function paintCombo(){
   c.textContent = B.combo + ' れんぞく！';
   c.classList.toggle('on', B.combo >= 2);
 }
+/** 当たった手応え。光らせて、ほんの一瞬止めて、強いときは揺らす */
+function impact(crit){
+  const st = $('stage'), fl = $('b-flash');
+  if (fl){
+    fl.className = 'flash' + (crit ? ' crit' : '');
+    void fl.offsetWidth;                 // アニメを最初からやり直させる
+    fl.classList.add('on');
+    setTimeout(() => fl.classList.remove('on'), 300);
+  }
+  st.classList.add('hitstop');
+  setTimeout(() => st.classList.remove('hitstop'), 180);
+  if (crit){
+    setTimeout(() => {
+      st.classList.add('shake');
+      setTimeout(() => st.classList.remove('shake'), 360);
+    }, 90);
+  }
+}
+
 /** ダメージの数字を飛ばす */
 function popDamage(n, crit){
   const d = document.createElement('div');
@@ -2358,11 +2448,8 @@ function damage(n, label, crit){
   foe.classList.remove('idle');
   foe.classList.add('hit');
   setTimeout(() => { foe.classList.remove('hit'); foe.classList.add('idle'); }, 340);
-  if (crit){
-    $('stage').classList.add('shake');
-    setTimeout(() => $('stage').classList.remove('shake'), 360);
-    sfxCrit();
-  } else sfxHit();
+  impact(crit);
+  if (crit) sfxCrit(); else sfxHit();
   bmsg(crit ? 'crit' : '', label);
 }
 
