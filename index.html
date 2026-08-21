@@ -158,9 +158,9 @@
     min-height:clamp(32px,8.4vw,56px);direction:ltr;}
   .grid.gojuon .blank{min-height:clamp(32px,8.4vw,56px);}
   .subhead{font-size:.82rem;color:var(--sub);margin:16px 0 6px;letter-spacing:.06em;}
-  .grid button.done{border-color:var(--good);}
-  .grid button.done::after{content:'';position:absolute;right:5px;top:5px;
-    width:8px;height:8px;border-radius:50%;background:var(--good);}
+  .grid button.done{border-color:var(--good);border-width:4px;}
+  .grid button.done::after{content:'✓';position:absolute;right:2px;top:-2px;
+    font-size:13px;line-height:1;letter-spacing:0;color:var(--good);}
 
   /* ---- かく練習 ---- */
   #write{align-items:center;text-align:center;}
@@ -299,11 +299,17 @@
     background:#3A3430;border:2px solid #24201D;
     overflow:hidden;margin:8px auto 2px;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}
   .bar i{display:block;height:100%;transition:width .35s ease;}
-  .bar.foehp i{background:linear-gradient(180deg,#F07167 0%,#D9382B 100%);}   /* 敵＝赤 */
-  .bar.myhp  i{background:linear-gradient(180deg,#6FD69B 0%,#2E9E6B 100%);}   /* 自分＝緑 */
+  /* 英国ディスレクシア協会のStyle Guideは「緑と赤/ピンクは避ける」としている。
+     色覚特性のある人（日本人男性の約5%）に区別しにくいため。
+     ここでは 橙 と 青 という、色覚特性でも分離しやすい組み合わせにしている。 */
+  .bar.foehp i{background:linear-gradient(180deg,#F0A05A 0%,#D2691E 100%);}   /* 敵＝橙 */
+  .bar.myhp  i{background:linear-gradient(180deg,#7FB6E0 0%,#2F6FA8 100%);}   /* 自分＝青 */
   .bar.exp{height:11px;}
-  .bar.exp i{background:linear-gradient(180deg,#8FC2EA 0%,#3B82C4 100%);}     /* 経験値＝青 */
-  .bar.low i{background:linear-gradient(180deg,#FFD37A 0%,#E8A020 100%);}     /* 残りわずか */
+  .bar.exp i{background:linear-gradient(180deg,#B79BD6 0%,#7B57AE 100%);}     /* 経験値＝紫 */
+  /* 残りわずかは色ではなく「しま模様」で知らせる（色が見えなくても伝わる） */
+  .bar.low i{background-image:linear-gradient(180deg,#7FB6E0 0%,#2F6FA8 100%),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.85) 0 6px,rgba(255,255,255,0) 6px 12px);
+    background-blend-mode:overlay;}
   .barlabel{font-size:.8rem;color:var(--sub);font-variant-numeric:tabular-nums;}
   .bglyph{font-size:clamp(6rem,30vw,11rem);line-height:1.05;letter-spacing:0;
     min-height:1.1em;user-select:none;}
@@ -325,8 +331,8 @@
   .chasebox span{position:absolute;left:0;top:0;
     font-size:clamp(1.7rem,7.5vw,2.5rem);line-height:1;letter-spacing:0;
     color:var(--fg);user-select:none;cursor:pointer;will-change:transform;}
-  .chasebox span.gotcha{color:var(--good);}
-  .chasebox span.nope{color:var(--soft);}
+  .chasebox span.gotcha{color:var(--good);text-decoration:underline;text-decoration-thickness:4px;}
+  .chasebox span.nope{color:var(--soft);opacity:.45;}
 
   /* おとあそび: 頭音・しりとり・逆さことば（音韻抽出の訓練） */
   .soundq{font-size:clamp(1.5rem,7vw,2.2rem);letter-spacing:.08em;line-height:1.5;
@@ -336,8 +342,9 @@
   .schoices button{font-size:clamp(1.6rem,7vw,2.2rem);letter-spacing:.06em;
     min-width:84px;min-height:74px;padding:10px 16px;
     background:var(--card);color:var(--fg);border:3px solid var(--line);box-shadow:none;}
-  .schoices button.right{border-color:var(--good);}
-  .schoices button.wrong{border-color:var(--soft);opacity:.55;}
+  .schoices button{position:relative;}
+  .schoices button.right{border-color:var(--good);border-width:6px;}
+  .schoices button.wrong{border-color:var(--soft);border-style:dashed;opacity:.5;}
 
   /* めがねの効果。読みやすさの調整を「そうび」として渡している */
   .ranrow span.dim{opacity:.2;}                       /* ものさし: 周りを薄く */
@@ -373,8 +380,15 @@
   .choice svg{width:100%;height:100%;display:block;}
   .choice svg path{fill:none;stroke:var(--fg);stroke-width:7;
     stroke-linecap:round;stroke-linejoin:round;}
-  .choice.right{border-color:var(--good);}
-  .choice.wrong{border-color:var(--soft);opacity:.55;}
+  /* 正誤を色だけで伝えない。枠の太さ・線種・記号でも区別できるようにする */
+  .choice{position:relative;}
+  .choice.right{border-color:var(--good);border-width:6px;}
+  .choice.wrong{border-color:var(--soft);border-style:dashed;opacity:.5;}
+  .choice.right::after,.schoices button.right::after{
+    content:'✓';position:absolute;right:-6px;top:-10px;
+    background:var(--good);color:#fff;border-radius:50%;
+    width:26px;height:26px;line-height:26px;text-align:center;
+    font-size:16px;letter-spacing:0;}
 
   /* ---- おとの かず(特殊音節) ---- */
   .beats{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;min-height:62px;}
@@ -382,8 +396,32 @@
     border:3px dashed var(--line);display:flex;align-items:center;justify-content:center;
     font-size:clamp(1rem,4.4vw,1.5rem);letter-spacing:0;color:var(--sub);}
   .beat.on{background:var(--accent);border-style:solid;border-color:var(--accent);color:#fff;}
-  .beat.sp{border-style:solid;border-color:var(--soft);color:var(--soft);}
+  /* MIM（多層指導モデル）は、文字に入る前に「音の特徴を記号で表す」。
+     色ではなく記号の形で特殊音節を区別する。色覚特性があっても伝わる。 */
+  .beat{flex-direction:column;gap:0;}
+  .beat .sym{font-size:.8em;line-height:1;opacity:.9;letter-spacing:0;}
+  .beat .ch{font-size:1em;line-height:1.1;letter-spacing:0;}
+  .beat.sp{border-style:solid;border-color:var(--soft);color:var(--soft);border-width:4px;}
   .beat.on.sp{background:var(--soft);color:#fff;}
+  .moralegend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
+    font-size:.76rem;color:var(--sub);margin:2px 0 6px;letter-spacing:.02em;}
+  .moralegend span{white-space:nowrap;}
+
+  /* きろく（大人向け） */
+  .adultlink{margin-top:26px;text-align:center;}
+  .adultlink button{font-size:.8rem;padding:8px 14px;min-height:0;
+    background:transparent;color:var(--sub);border:1px solid var(--line);box-shadow:none;}
+  .statrow{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 4px;}
+  .stat{flex:1 1 130px;background:var(--card);border:2px solid var(--line);
+    border-radius:14px;padding:10px 12px;}
+  .stat b{display:block;font-size:1.5rem;letter-spacing:.02em;
+    font-variant-numeric:tabular-nums;}
+  .stat span{font-size:.76rem;color:var(--sub);}
+  .daybar{display:flex;align-items:flex-end;gap:5px;height:96px;margin:8px 0 2px;}
+  .daybar div{flex:1;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px;}
+  .daybar div.none{background:var(--line);}
+  .dayax{display:flex;gap:5px;font-size:.62rem;color:var(--sub);letter-spacing:0;}
+  .dayax span{flex:1;text-align:center;}
   .tapzone{width:min(340px,86vw);aspect-ratio:2.2/1;margin:0 auto;border-radius:22px;
     background:var(--card);border:3px dashed var(--line);display:flex;
     align-items:center;justify-content:center;font-size:1.15rem;color:var(--sub);
@@ -406,6 +444,10 @@
     <button id="btn-mode-write" class="mode sub">かく<small>書き順を 見て なぞって 書く</small></button>
     <button id="btn-mode-mikake" class="mode sub">みわけ<small>にている字を 見分ける</small></button>
     <button id="btn-mode-haku" class="mode sub">おとの かず<small>「がっこう」は いくつ？</small></button>
+  </div>
+
+  <div class="adultlink">
+    <button id="btn-adult">おとなの人へ ／ きろくを見る</button>
   </div>
 </section>
 
@@ -543,11 +585,53 @@
   <p class="btask" id="hk-task">きこえた ことばの かずだけ たたいてね</p>
   <div class="wordline" id="hk-word"></div>
   <div class="beats" id="hk-beats"></div>
+  <div class="moralegend" id="hk-legend"></div>
   <div class="tapzone" id="hk-tap">ここを たたく</div>
   <div class="wfb none" id="hk-msg"></div>
   <div class="btnrow" style="justify-content:center">
     <button class="ghost" id="btn-hk-again">もういちど きく</button>
     <button class="ghost" id="btn-hk-next">つぎ</button>
+  </div>
+</section>
+
+<!-- ============ きろく(大人向け) ============ -->
+<section id="record" class="screen">
+  <div class="topbar"><button class="ghost" id="btn-rec-back">もどる</button></div>
+  <h1>きろく</h1>
+  <p class="lead">練習の記録です。<b>この端末の中だけ</b>に保存され、外へは送りません。</p>
+
+  <div class="statrow" id="rec-stats"></div>
+
+  <div class="card">
+    <h2>この2週間の練習した回数</h2>
+    <div class="daybar" id="rec-days"></div>
+    <div class="dayax" id="rec-daysax"></div>
+    <p class="note" id="rec-daysnote"></p>
+  </div>
+
+  <div class="card">
+    <h2>種類ごとの できた割合</h2>
+    <div class="scroll"><table id="rec-kind">
+      <thead><tr><th>種類</th><th>回数</th><th>できた</th><th>割合</th></tr></thead>
+      <tbody></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>つまずいているところ</h2>
+    <p class="note">まちがえた回数の多い順です。ここを重点的に練習すると効きます。</p>
+    <div class="scroll"><table id="rec-stumble">
+      <thead><tr><th>種類</th><th>出題</th><th>まちがい</th><th>回数</th></tr></thead>
+      <tbody></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>学校などに見せるとき</h2>
+    <p class="note">下の内容をコピーして、メールや書類に貼れます。</p>
+    <textarea id="rec-csv" readonly></textarea>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="ghost" id="btn-rec-copy">コピー</button>
+      <button class="ghost" id="btn-rec-clear">きろくを ぜんぶ消す</button>
+    </div>
   </div>
 </section>
 
@@ -960,7 +1044,7 @@ const S = {
 const $ = id => document.getElementById(id);
 function show(name){
   ['home','readhome','play','result','pickchar','write',
-   'mikake','haku','battlepick','battle']
+   'mikake','haku','record','battlepick','battle']
     .forEach(n => $(n).classList.toggle('on', n === name));
   window.scrollTo(0,0);
 }
@@ -1268,6 +1352,7 @@ async function oneTrial(k){
 
   const grade = phase === 'A' ? 'early' : phase === 'B' ? 'late' : 'none';
   updateWeight(k, grade);
+  record('read', k, grade !== 'none', phase === 'A' ? onsetMs : null);
   S.trials.push({
     n: S.trials.length + 1, k, grade, phase: phase || '-',
     ms: onsetMs === null ? null : Math.round(onsetMs),
@@ -1358,6 +1443,87 @@ $('btn-reset').onclick = () => {
 
 loadWeights();
 
+
+/* =========================================================
+   きろく（アセスメント）
+   MIM/RTI は「アセスメントと指導のリンク」が核。
+   年3回測って、伸びていない子に厚く手を掛ける、という考え方。
+   これまで反応時間も正誤も測っていたのに、その場で捨てていた。
+   ・端末の中だけに保存する。外へは送らない
+   ・子どもには見せない（点数で自分を測らせないため）。大人向けの画面から見る
+   ========================================================= */
+const LS_LOG = 'dyslexia-p0-log-v1';
+const LOG_MAX = 3000;          // 古いものから捨てる
+
+let LOG = [];
+
+function loadLog(){
+  try { LOG = JSON.parse(localStorage.getItem(LS_LOG) || '[]'); } catch(e){ LOG = []; }
+  if (!Array.isArray(LOG)) LOG = [];
+}
+function saveLog(){
+  try { localStorage.setItem(LS_LOG, JSON.stringify(LOG)); } catch(e){}
+}
+/** 今日の日付（端末の時計。YYYY-MM-DD） */
+function today(){
+  const d = new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+}
+/**
+ * 1回ぶんの記録。
+ * kind: read(よむ) / write(かく) / mikake(みわけ) / mora(おとのかず)
+ *       / ran(はやくち) / chase(めでおえ) / sound(おとあそび)
+ * item: 出題した文字やことば
+ * ok  : できたか
+ * ms  : かかった時間（分かるときだけ）
+ */
+function record(kind, item, ok, ms){
+  LOG.push({ d:today(), k:kind, i:item, o:ok ? 1 : 0,
+             m:(typeof ms === 'number' && isFinite(ms)) ? Math.round(ms) : null });
+  if (LOG.length > LOG_MAX) LOG.splice(0, LOG.length - LOG_MAX);
+  saveLog();
+}
+
+/** つまずいている項目を、まちがえた回数の多い順に */
+function stumbles(n){
+  const tally = {};
+  LOG.forEach(r => {
+    const key = r.k + '' + r.i;
+    if (!tally[key]) tally[key] = { k:r.k, i:r.i, ng:0, all:0 };
+    tally[key].all++;
+    if (!r.o) tally[key].ng++;
+  });
+  return Object.values(tally)
+    .filter(t => t.ng > 0)
+    .sort((a, b) => b.ng - a.ng || b.all - a.all)
+    .slice(0, n || 10);
+}
+
+/** 日ごとのまとめ（新しい順） */
+function byDay(){
+  const days = {};
+  LOG.forEach(r => {
+    if (!days[r.d]) days[r.d] = { d:r.d, n:0, ok:0, msSum:0, msN:0 };
+    const x = days[r.d];
+    x.n++; if (r.o) x.ok++;
+    if (r.m !== null && r.o){ x.msSum += r.m; x.msN++; }
+  });
+  return Object.values(days).sort((a, b) => a.d < b.d ? 1 : -1);
+}
+
+/** 種類ごとの正答率 */
+function byKind(){
+  const K = {};
+  LOG.forEach(r => {
+    if (!K[r.k]) K[r.k] = { n:0, ok:0 };
+    K[r.k].n++; if (r.o) K[r.k].ok++;
+  });
+  return K;
+}
+
+loadLog();          // ※ LOG を宣言したあとで呼ぶこと
 
 /* =========================================================
    かくモード — 書き順
@@ -1759,6 +1925,7 @@ function judgeStroke(){
     if (i !== W.idx && matches(usr, W.refs[i])){ other = i; break; }
   }
   W.miss++;
+  record('write', W.char, false, null);
   if (other >= 0) wfb('soft', (W.idx + 1) + 'かくめ から かこうね');
   else            wfb('soft', 'ひかっている 線を なぞってみよう');
   flashCue(W.idx);
@@ -1773,6 +1940,7 @@ function finishChar(){
   }
   W.done[W.char] = true;
   saveDone();
+  record('write', W.char, true, null);
   if (W.onDone){ const cb = W.onDone; W.onDone = null; cb(); return; }
   wfb('', 'かけた！');
   speak(W.char);
@@ -2286,6 +2454,7 @@ function ranTurn(){
 function ranDone(ms){
   if (!B.running) return;
   const n = B.ranAt;
+  record('ran', (B.ran || []).join(''), n >= RAN_LEN, ms);
   if (n >= RAN_LEN){
     const fast = ms !== null && ms < 5000;
     hitFoe(fast ? 3 : 2,
@@ -2387,6 +2556,7 @@ function soundTurn(){
 function soundPick(v, btn){
   if (!B.running || SQ.locked) return;
   SQ.locked = true;
+  record('sound', B.char, v === SQ.answer, null);
   const right = $('b-schoices').querySelector('[data-val="' + SQ.answer + '"]');
   if (v === SQ.answer){
     btn.classList.add('right');
@@ -2517,6 +2687,7 @@ function chasePick(it){
   clearTimeout(B.timer);
   it.el.classList.add('gotcha');
   const ms = performance.now() - CHASE.t0;
+  record('chase', CHASE.target, true, ms);
   const fast = ms < 3500;
   hitFoe(fast ? 2 : 1,
          fast ? 'つかまえた！ かいしんの いちげき！' : 'つかまえた！ こうげき！',
@@ -2549,6 +2720,7 @@ function battleMwPick(c, btn){
   if (!B.running || B.mwLocked) return;
   B.mwLocked = true;
   const right = $('mw-choices').querySelector('[data-char="' + B.char + '"]');
+  record('mikake', B.char, c === B.char, null);
   if (c === B.char){
     btn.classList.add('right');
     hitFoe(1, 'そう！ こうげき！', false);
@@ -2579,6 +2751,7 @@ async function readTurn(){
   if (!B.running) return;
 
   if (hit === 'crit'){
+    record('read', B.char, true, S.wait);
     hitFoe(2, 'はやい！ かいしんの いちげき！', true);
     disarm();
     await speak(B.char);
@@ -2598,6 +2771,7 @@ async function readTurn(){
   if (!B.running) return;
   disarm();
 
+  record('read', B.char, hit === 'ok', null);
   if (hit === 'ok') hitFoe(1, 'よめた！ こうげき！', false);
   else              passTurn('つぎ いこう');      // 読めなかっただけ。罰しない
   afterTurn();
@@ -2776,6 +2950,104 @@ $('btn-rpg-reset').onclick = () => {
 loadRpg();
 
 
+/* ---------- きろく画面の中身 ---------- */
+const KIND_NAME = { read:'よむ', write:'かく', mikake:'みわけ', mora:'おとの かず',
+                    ran:'はやくち', chase:'めでおえ', sound:'おとあそび' };
+
+function renderRecord(){
+  loadLog();
+  const days = byDay();
+  const kinds = byKind();
+  const all = LOG.length;
+  const ok = LOG.filter(r => r.o).length;
+  const ms = LOG.filter(r => r.o && r.m !== null).map(r => r.m);
+  const avg = ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null;
+
+  // 反応時間が速くなっているか（前半と後半をくらべる）
+  let trend = '—';
+  if (ms.length >= 10){
+    const half = Math.floor(ms.length / 2);
+    const a = ms.slice(0, half).reduce((x, y) => x + y, 0) / half;
+    const b = ms.slice(half).reduce((x, y) => x + y, 0) / (ms.length - half);
+    const diff = Math.round(a - b);
+    trend = diff > 30 ? diff + 'ms はやく' : diff < -30 ? (-diff) + 'ms おそく' : 'かわらず';
+  }
+
+  $('rec-stats').innerHTML =
+    '<div class="stat"><b>' + all + '</b><span>ぜんぶの 出題</span></div>' +
+    '<div class="stat"><b>' + (all ? Math.round(ok / all * 100) : 0) + '%</b><span>できた割合</span></div>' +
+    '<div class="stat"><b>' + (avg === null ? '—' : avg + 'ms') + '</b><span>反応の速さ（平均）</span></div>' +
+    '<div class="stat"><b>' + trend + '</b><span>前半とくらべて</span></div>';
+
+  // この2週間
+  const last14 = [];
+  for (let i = 13; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') +
+                '-' + String(d.getDate()).padStart(2,'0');
+    const hit = days.find(x => x.d === key);
+    last14.push({ key, n: hit ? hit.n : 0, label: (d.getMonth()+1) + '/' + d.getDate() });
+  }
+  const top = Math.max(1, ...last14.map(x => x.n));
+  $('rec-days').innerHTML = last14.map(x =>
+    '<div class="' + (x.n ? '' : 'none') + '" style="height:' +
+    Math.max(2, Math.round(x.n / top * 100)) + '%" title="' + x.label + ': ' + x.n + '回"></div>').join('');
+  $('rec-daysax').innerHTML = last14.map((x, i) =>
+    '<span>' + (i % 3 === 0 ? x.label : '') + '</span>').join('');
+  const activeDays = last14.filter(x => x.n).length;
+  $('rec-daysnote').textContent =
+    '練習した日: ' + activeDays + '日 / 14日中　（いちばん多い日で ' + top + '回）';
+
+  // 種類ごと
+  const kb = $('rec-kind').querySelector('tbody');
+  kb.innerHTML = Object.keys(kinds).map(k => {
+    const x = kinds[k];
+    return '<tr><td>' + (KIND_NAME[k] || k) + '</td><td>' + x.n + '</td><td>' + x.ok +
+           '</td><td>' + Math.round(x.ok / x.n * 100) + '%</td></tr>';
+  }).join('') || '<tr><td colspan="4">まだ記録がありません</td></tr>';
+
+  // つまずき
+  const sb = $('rec-stumble').querySelector('tbody');
+  const st = stumbles(12);
+  sb.innerHTML = st.map(t =>
+    '<tr><td>' + (KIND_NAME[t.k] || t.k) + '</td><td>' + t.i + '</td><td>' + t.ng +
+    '</td><td>' + t.all + '</td></tr>').join('') ||
+    '<tr><td colspan="4">まちがいの記録はまだありません</td></tr>';
+
+  // 貼りつけ用
+  const lines = ['すらすら ひらがな — 練習のきろく', 'つくった日: ' + today(), ''];
+  lines.push('ぜんぶの出題: ' + all + ' / できた割合: ' + (all ? Math.round(ok/all*100) : 0) + '%');
+  if (avg !== null) lines.push('反応の速さ（平均）: ' + avg + 'ms（前半とくらべて ' + trend + '）');
+  lines.push('この2週間で練習した日: ' + activeDays + '日');
+  lines.push('', '［種類ごと］');
+  Object.keys(kinds).forEach(k => {
+    const x = kinds[k];
+    lines.push('  ' + (KIND_NAME[k] || k) + ': ' + x.ok + '/' + x.n +
+               '（' + Math.round(x.ok/x.n*100) + '%）');
+  });
+  if (st.length){
+    lines.push('', '［つまずいているところ］');
+    st.forEach(t => lines.push('  ' + (KIND_NAME[t.k]||t.k) + ' 「' + t.i + '」 ' +
+                               t.ng + '回まちがい / ' + t.all + '回中'));
+  }
+  $('rec-csv').value = lines.join(String.fromCharCode(10));
+}
+
+$('btn-adult').onclick    = () => { renderRecord(); show('record'); };
+$('btn-rec-back').onclick = () => show('home');
+$('btn-rec-copy').onclick = async () => {
+  const ta = $('rec-csv');
+  try { await navigator.clipboard.writeText(ta.value); }
+  catch(e){ ta.select(); document.execCommand('copy'); }
+  $('btn-rec-copy').textContent = 'コピーしました';
+  setTimeout(() => { $('btn-rec-copy').textContent = 'コピー'; }, 1600);
+};
+$('btn-rec-clear').onclick = () => {
+  if (!confirm('練習のきろくを ぜんぶ消します。よろしいですか？')) return;
+  LOG = []; saveLog(); renderRecord();
+};
+
 /* =========================================================
    みわけ — にている形の字を見分ける
    「わ／ね／れ」「シ／ツ」などの混同は読み書き障害の典型症状。
@@ -2866,6 +3138,7 @@ function mwPick(c, btn){
   MW.locked = true;
   const right = $('mw-choices').querySelector('[data-char="' + MW.target + '"]');
 
+  record('mikake', MW.target, c === MW.target, null);
   if (c === MW.target){
     btn.classList.add('right');
     $('mw-msg').className = 'wfb';
@@ -2919,6 +3192,19 @@ function isSpecial(m){
   return m.length > 1 || 'っッーんン'.includes(m);
 }
 
+/* MIM式の記号。音の特徴を、文字に入る前に形で表す。
+   ● ふつうの音 ／ ▲ ん（はねる）／ ■ っ（つまる）／ ─ ー（のばす）／ ◎ 拗音（2字で1つ） */
+const MORA_SYM = { normal:'●', hatsu:'▲', soku:'■', chou:'─', you:'◎' };
+const MORA_NAME = { normal:'ふつう', hatsu:'はねる', soku:'つまる', chou:'のばす', you:'2字で1つ' };
+
+function moraType(m){
+  if (m.length > 1) return 'you';
+  if ('っッ'.includes(m)) return 'soku';
+  if (m === 'ー')         return 'chou';
+  if ('んン'.includes(m)) return 'hatsu';
+  return 'normal';
+}
+
 const HK = { i:0, word:null, mora:[], taps:0, tries:0, timer:null, judge:null };
 
 function hkStart(){
@@ -2935,6 +3221,7 @@ function hkNext(){
   HK.tries = 0;
   $('hk-word').textContent = '';
   $('hk-beats').innerHTML = '';
+  $('hk-legend').innerHTML = '';
   $('hk-tap').classList.remove('hit');
   $('hk-msg').className = 'wfb none';
   $('hk-msg').textContent = '';
@@ -2954,6 +3241,7 @@ function hkTap(){
   HK.judge = setTimeout(hkCheck, 1300);       // たたき終わったら数える
 }
 function hkCheck(){
+  record('mora', HK.word.w, HK.taps === HK.mora.length, null);
   if (HK.taps === HK.mora.length){
     $('hk-msg').className = 'wfb';
     $('hk-msg').textContent = 'そう！ ' + HK.mora.length + 'こ！';
@@ -2973,6 +3261,7 @@ function hkCheck(){
   $('hk-msg').textContent = 'もういちど きいてみよう';
   HK.taps = 0;
   $('hk-beats').innerHTML = '';
+  $('hk-legend').innerHTML = '';
   HK.timer = setTimeout(hkSay, 700);
 }
 /** 拍ごとにマスを出す。特殊音節は色を変えて目立たせる */
@@ -2980,13 +3269,20 @@ function hkReveal(){
   $('hk-word').textContent = HK.word.w;
   const box = $('hk-beats');
   box.innerHTML = '';
+  const used = [];
   HK.mora.forEach((m, i) => {
+    const t = moraType(m);
+    if (!used.includes(t)) used.push(t);
     const b = document.createElement('div');
-    b.className = 'beat on' + (isSpecial(m) ? ' sp' : '');
-    b.textContent = m;
+    b.className = 'beat on' + (t === 'normal' ? '' : ' sp');
+    b.innerHTML = '<span class="sym">' + MORA_SYM[t] + '</span>' +
+                  '<span class="ch">' + m + '</span>';
     box.appendChild(b);
     setTimeout(() => { if ($('haku').classList.contains('on')) speak(m); }, 400 + i * 620);
   });
+  // 出てきた記号の意味だけを並べる（全部出すと多すぎる）
+  $('hk-legend').innerHTML = used
+    .map(t => '<span>' + MORA_SYM[t] + ' ' + MORA_NAME[t] + '</span>').join('');
 }
 
 $('hk-tap').addEventListener('pointerdown', ev => { ev.preventDefault(); hkTap(); });
