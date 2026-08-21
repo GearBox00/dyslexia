@@ -625,6 +625,12 @@
   </div>
 
   <div class="card">
+    <h2>いま よく出している字</h2>
+    <p class="note">つまずいた字ほど出やすくしています。できるようになると自然に減ります。</p>
+    <div class="grid" id="rec-focus" style="grid-template-columns:repeat(auto-fill,minmax(52px,1fr))"></div>
+  </div>
+
+  <div class="card">
     <h2>学校などに見せるとき</h2>
     <p class="note">下の内容をコピーして、メールや書類に貼れます。</p>
     <textarea id="rec-csv" readonly></textarea>
@@ -1049,32 +1055,49 @@ function show(name){
   window.scrollTo(0,0);
 }
 
-/* ---------- 重み(間隔反復) ---------- */
+/* ---------- 重み(間隔反復) ----------
+   T式の核心は「できた字は出にくく、できない字は出やすく」すること。
+   以前は「よむ」モードだけで効いていて、主軸の「たたかう」は
+   ただのランダムだった。いまは全モードでこの重みを共有している。
+
+   ・重みは 0.08〜3.0。まだ出していない字は 1
+   ・つまずいても最大3倍まで。**苦手な字ばかりにはしない**
+     （できないものばかり出すと、自己肯定感を守るという核が崩れる）
+   ・できた字も 0.08 は残るので、ときどき出て定着を確かめられる      */
 function loadWeights(){
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ saved = {}; }
-  S.weights = {};
-  KANA.concat(WORDS).forEach(k => {
-    S.weights[k] = (typeof saved[k] === 'number' && saved[k] > 0) ? saved[k] : 1;
-  });
+  try { S.weights = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; }
+  catch(e){ S.weights = {}; }
+  if (typeof S.weights !== 'object' || Array.isArray(S.weights)) S.weights = {};
   if (!S.items.length) S.items = KANA;
 }
 function saveWeights(){
   try { localStorage.setItem(LS_KEY, JSON.stringify(S.weights)); } catch(e){}
 }
-function pickKana(prev){
-  const pool = S.items.filter(k => k !== prev);
+/** その字・ことばの重み。知らないものは 1 */
+function wOf(k){
+  const v = S.weights[k];
+  return (typeof v === 'number' && v > 0) ? v : 1;
+}
+/** 重みつきで1つえらぶ。直前と同じものは避ける */
+function pickWeighted(list, prev){
+  if (!list || !list.length) return '';
+  const pool = list.length > 1 ? list.filter(k => k !== prev) : list.slice();
   let sum = 0;
-  for (const k of pool) sum += S.weights[k];
+  for (const k of pool) sum += wOf(k);
   let r = Math.random() * sum;
-  for (const k of pool){ r -= S.weights[k]; if (r <= 0) return k; }
+  for (const k of pool){ r -= wOf(k); if (r <= 0) return k; }
   return pool[pool.length - 1];
 }
+function pickKana(prev){ return pickWeighted(S.items, prev); }
+
+/** できぐあいを重みに返す。early=すぐできた / late=できた / none=できなかった */
 function updateWeight(k, grade){
-  const w = S.weights[k];
+  if (!k) return;
+  const w = wOf(k);
   if (grade === 'early')      S.weights[k] = Math.max(0.08, w * 0.5);
   else if (grade === 'late')  S.weights[k] = Math.max(0.20, w * 0.85);
   else                        S.weights[k] = Math.min(3.0,  w * 1.5);
+  saveWeights();
 }
 
 /* ---------- 音声合成(お手本) ---------- */
@@ -2386,19 +2409,20 @@ function nextTurn(){
   if (B.turn === 'sound'){ soundTurn(); return; }
 
   if (B.turn === 'mikake'){
-    B.mwSet = sets[Math.floor(Math.random() * sets.length)];
-    B.char  = B.mwSet[Math.floor(Math.random() * B.mwSet.length)];
+    const cand = [...new Set(sets.flat())];
+    B.char  = pickWeighted(cand, B.char);
+    B.mwSet = sets.filter(x => x.includes(B.char))[0] || sets[0];
     mikakeTurn();
     return;
   }
   // ことばの敵だけ、よむターンが単語になる(T式の第2段階)
   if (B.turn === 'read' && B.foe.words){
-    B.char = WORDS[Math.floor(Math.random() * WORDS.length)];
+    B.char = pickWeighted(WORDS, B.char);
     readTurn();
     return;
   }
   const chars = foeChars(B.foe.set);
-  B.char = chars[Math.floor(Math.random() * chars.length)];
+  B.char = pickWeighted(chars, B.char);       // つまずいた字ほど出やすい
   if (B.turn === 'read') readTurn();
   else                   writeTurn();
 }
@@ -2417,7 +2441,7 @@ function ranTurn(){
   const pool = foeChars(B.foe.set).filter(c => c.length === 1);
   B.ran = [];
   while (B.ran.length < RAN_LEN){
-    const c = pool[Math.floor(Math.random() * pool.length)];
+    const c = pickWeighted(pool, B.ran[B.ran.length - 1]);
     if (B.ran[B.ran.length - 1] !== c) B.ran.push(c);
   }
   B.char = B.ran[0];
@@ -2455,6 +2479,8 @@ function ranDone(ms){
   if (!B.running) return;
   const n = B.ranAt;
   record('ran', (B.ran || []).join(''), n >= RAN_LEN, ms);
+  // 読めたところまでと、届かなかった字を分けて重みに返す
+  (B.ran || []).forEach((c, i) => updateWeight(c, i < n ? 'late' : 'none'));
   if (n >= RAN_LEN){
     const fast = ms !== null && ms < 5000;
     hitFoe(fast ? 3 : 2,
@@ -2499,7 +2525,7 @@ function soundTurn(){
   bmsg('none', '');
   SQ.locked = false;
 
-  const w = MORA_WORDS[Math.floor(Math.random() * MORA_WORDS.length)].w;
+  const w = pickWeighted(MORA_WORDS.map(x => x.w), B.char);
   const mora = splitMora(w);
   const kinds = ['head', 'tail'];
   if (mora.length <= 3) kinds.push('reverse');      // 逆さは短いことばだけ
@@ -2557,6 +2583,7 @@ function soundPick(v, btn){
   if (!B.running || SQ.locked) return;
   SQ.locked = true;
   record('sound', B.char, v === SQ.answer, null);
+  updateWeight(B.char, v === SQ.answer ? 'late' : 'none');
   const right = $('b-schoices').querySelector('[data-val="' + SQ.answer + '"]');
   if (v === SQ.answer){
     btn.classList.add('right');
@@ -2596,11 +2623,11 @@ function chaseTurn(){
   const sets = confuseSetsFor(B.foe);
   let cast;
   if (sets.length && Math.random() < 0.6){
-    const set = sets[Math.floor(Math.random() * sets.length)];
-    B.char = set[Math.floor(Math.random() * set.length)];
-    cast = set.slice();
+    const cand = [...new Set(sets.flat())];
+    B.char = pickWeighted(cand, B.char);
+    cast = (sets.filter(x => x.includes(B.char))[0] || sets[0]).slice();
   } else {
-    B.char = pool[Math.floor(Math.random() * pool.length)];
+    B.char = pickWeighted(pool, B.char);
     cast = [B.char];
   }
   while (cast.length < 6){
@@ -2668,10 +2695,13 @@ function chaseTurn(){
   B.timer = setTimeout(() => {
     if (!B.running || CHASE.done) return;
     CHASE.done = true; chaseStop();
+    updateWeight(CHASE.target, 'none');
     passTurn('つぎ いこう');
     afterTurn();
   }, 12000);
 }
+
+const fastEnough = ms => ms < 3500;
 
 function chasePick(it){
   if (!B.running || CHASE.done) return;
@@ -2688,6 +2718,7 @@ function chasePick(it){
   it.el.classList.add('gotcha');
   const ms = performance.now() - CHASE.t0;
   record('chase', CHASE.target, true, ms);
+  updateWeight(CHASE.target, fastEnough(ms) ? 'early' : 'late');
   const fast = ms < 3500;
   hitFoe(fast ? 2 : 1,
          fast ? 'つかまえた！ かいしんの いちげき！' : 'つかまえた！ こうげき！',
@@ -2721,6 +2752,7 @@ function battleMwPick(c, btn){
   B.mwLocked = true;
   const right = $('mw-choices').querySelector('[data-char="' + B.char + '"]');
   record('mikake', B.char, c === B.char, null);
+  updateWeight(B.char, c === B.char ? 'late' : 'none');
   if (c === B.char){
     btn.classList.add('right');
     hitFoe(1, 'そう！ こうげき！', false);
@@ -2752,6 +2784,7 @@ async function readTurn(){
 
   if (hit === 'crit'){
     record('read', B.char, true, S.wait);
+    updateWeight(B.char, 'early');
     hitFoe(2, 'はやい！ かいしんの いちげき！', true);
     disarm();
     await speak(B.char);
@@ -2772,6 +2805,7 @@ async function readTurn(){
   disarm();
 
   record('read', B.char, hit === 'ok', null);
+  updateWeight(B.char, hit === 'ok' ? 'late' : 'none');
   if (hit === 'ok') hitFoe(1, 'よめた！ こうげき！', false);
   else              passTurn('つぎ いこう');      // 読めなかっただけ。罰しない
   afterTurn();
@@ -2788,6 +2822,7 @@ function writeTurn(){
   B.voiceTimer = setTimeout(() => { if (B.running) sayKana(B.char, () => B.running); }, 350);
   W.onDone = () => {
     if (!B.running) return;
+    updateWeight(B.char, W.miss === 0 ? 'early' : 'late');
     if (W.miss === 0) hitFoe(2, 'きれいに かけた！ かいしんの いちげき！', true);
     else              hitFoe(1, 'かけた！ こうげき！', false);
     afterTurn();
@@ -3015,6 +3050,17 @@ function renderRecord(){
     '</td><td>' + t.all + '</td></tr>').join('') ||
     '<tr><td colspan="4">まちがいの記録はまだありません</td></tr>';
 
+  // いま重点的に出している字（重みの高い順）
+  const focus = Object.keys(S.weights)
+    .filter(k => wOf(k) > 1.05)
+    .sort((a, b) => wOf(b) - wOf(a))
+    .slice(0, 20);
+  $('rec-focus').innerHTML = focus.length
+    ? focus.map(k => '<button disabled style="opacity:1;font-size:' +
+        (k.length > 2 ? '.9rem' : '1.5rem') + '">' + k + '</button>').join('')
+    : '<p class="note" style="grid-column:1/-1">まだありません。' +
+      'つまずいた字が出てくると、ここに並びます。</p>';
+
   // 貼りつけ用
   const lines = ['すらすら ひらがな — 練習のきろく', 'つくった日: ' + today(), ''];
   lines.push('ぜんぶの出題: ' + all + ' / できた割合: ' + (all ? Math.round(ok/all*100) : 0) + '%');
@@ -3026,6 +3072,10 @@ function renderRecord(){
     lines.push('  ' + (KIND_NAME[k] || k) + ': ' + x.ok + '/' + x.n +
                '（' + Math.round(x.ok/x.n*100) + '%）');
   });
+  if (focus.length){
+    lines.push('', '［いま よく出している字］');
+    lines.push('  ' + focus.slice(0, 12).join('  '));
+  }
   if (st.length){
     lines.push('', '［つまずいているところ］');
     st.forEach(t => lines.push('  ' + (KIND_NAME[t.k]||t.k) + ' 「' + t.i + '」 ' +
